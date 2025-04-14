@@ -4,7 +4,8 @@ let currentHeightMapUrl = 'japan.png';
 
 const TERRAIN_WIDTH = 1000;
 const TERRAIN_HEIGHT = 1000;
-const TERRAIN_DEPTH_SCALE = 100; // Scaling factor
+const TERRAIN_DEPTH_SCALE = 150; // Scaling factor
+const TERRAIN_OFFSET = 16;
 
 
 init();
@@ -16,7 +17,7 @@ function init() {
     scene.background = new THREE.Color(0x87CEEB); // Blue sky backgroudn
     scene.fog = new THREE.Fog(0x87CEEB, TERRAIN_WIDTH / 2, TERRAIN_WIDTH * 1.5);
     camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000);
-    camera.position.y = TERRAIN_DEPTH_SCALE * 0.5;
+    camera.position.y = TERRAIN_DEPTH_SCALE *0.5;
     camera.position.z = 6;
 
     // Renderer
@@ -100,7 +101,7 @@ function createTerrain(heightMapTexture) {
             const vertexIndex = (y * imgWidth + x) * 3; // Each vertex has 3 parts: X, Y, Z
 
             // Change the z component (vertex index + 2)
-            vertices[vertexIndex + 2] = (imgData[heightIndex] / 255) * TERRAIN_DEPTH_SCALE;
+            vertices[vertexIndex + 2] = (imgData[heightIndex] / 255) * TERRAIN_DEPTH_SCALE - TERRAIN_OFFSET;
         }
     }
 
@@ -140,7 +141,6 @@ function animate() {
 }
 
 
-// ADD Keyboard event handlers
 function onKeyDown(event) {
     if (controls.isLocked) {
 
