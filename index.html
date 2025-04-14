@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Three.js Island</title>
+    <style>
+        body { 
+            margin: 0; 
+        }
+        canvas { 
+            display: block; 
+        }
+        #mapButtons {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 100;
+            background: rgba(255, 255, 255, 0.7);
+            padding: 5px;
+            border-radius: 5px;
+        }
+        #mapButtons button {
+            margin: 2px;
+            padding: 5px 10px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div id="mapButtons">
+        <button id="japanBtn" data-map="japan.png">Japan</button>
+        <button id="sriLankaBtn" data-map="sri lanka.png">Sri Lanka</button>
+        <button id="irelandBtn" data-map="ireland.png">Ireland</button>
+        <button id="hawaiiBtn" data-map="hawaii.png">Hawaii</button>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/PointerLockControls.js"></script>
+
+    <script src="main.js"></script>
+</body>
+</html>
