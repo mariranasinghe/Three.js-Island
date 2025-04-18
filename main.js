@@ -1,12 +1,18 @@
 let scene, camera, renderer, controls;
 let terrainMesh;
-let currentHeightMapUrl = 'japan.png';
+let currentHeightMapUrl = 'world.png';
 
 const TERRAIN_WIDTH = 1000;
 const TERRAIN_HEIGHT = 1000;
-const TERRAIN_DEPTH_SCALE = 150; // Scaling factor
-const TERRAIN_OFFSET = 16;
+const TERRAIN_DEPTH_SCALE = 40; // Scaling factor
+const TERRAIN_OFFSET = 0;
 
+const biomes = {
+    desert: 0xFFFF00,
+    winterForest: 0x0000FF,
+    forest: 0x00FF00,
+    city: 0xFF0000
+}
 
 init();
 animate();
@@ -44,7 +50,7 @@ function init() {
 
 
     // Load heightmap and create terrain
-    loadNewTerrain('japan.png');
+    loadNewTerrain(currentHeightMapUrl);
     createWater();
     setupMapButtons();
     window.addEventListener('resize', onWindowResize, false);
@@ -55,11 +61,13 @@ function setupMapButtons() {
     const sriLankaButton = document.getElementById('sriLankaBtn');
     const irelandButton = document.getElementById('irelandBtn');
     const hawaiiButton = document.getElementById('hawaiiBtn');
+    const worldButton = document.getElementById('worldBtn');
 
     japanButton.addEventListener('click', () => {loadNewTerrain('japan.png');});
     sriLankaButton.addEventListener('click', () => {loadNewTerrain('sri lanka.png');});
     irelandButton.addEventListener('click', () => {loadNewTerrain('ireland.png');});
     hawaiiButton.addEventListener('click', () => {loadNewTerrain('hawaii.png');});
+    worldButton.addEventListener('click', () => {loadNewTerrain('world.png');});
 }
 
 function loadNewTerrain(mapFilename) {
@@ -72,14 +80,30 @@ function loadNewTerrain(mapFilename) {
     console.log(currentHeightMapUrl);
 
     const loader = new THREE.TextureLoader();
-    loader.load(currentHeightMapUrl, function(texture) {createTerrain(texture);});
+    loader.load(currentHeightMapUrl, 
+        function(texture) {
+            loader.load("textures/" + mapFilename.split(".")[0] + "-biome.png", 
+                function(biomeTexture) {
+                    console.log("textures/" + mapFilename.split(".")[0] + "-biome.png");
+                    createTerrain(texture, biomeTexture);
+                }
+            )
+        });
 }
 
 
-function createTerrain(heightMapTexture) {
+
+function createTerrain(heightMapTexture, biomeMapTexture) {
     const img = heightMapTexture.image;
     const imgWidth = img.width;
     const imgHeight = img.height;
+
+    const biomeImg = biomeMapTexture.image;
+
+    if (biomeImg.width != imgWidth || biomeImg.height != imgHeight) {
+        console.error("Height map and biome map are not the same size");
+        return;
+    }
 
     // Use canvas to access pixel information
     const canvas = document.createElement('canvas');
@@ -89,26 +113,61 @@ function createTerrain(heightMapTexture) {
     context.drawImage(img, 0, 0);
     const imgData = context.getImageData(0, 0, imgWidth, imgHeight).data;
 
+    // Use another canvas to access biome information
+    const biomeCanvas = document.createElement('canvas');
+    biomeCanvas.width = imgWidth;
+    biomeCanvas.height = imgHeight;
+    const biomeContext = biomeCanvas.getContext('2d', {willReadFrequently: true});
+    biomeContext.drawImage(biomeImg, 0, 0);
+    const biomeData = biomeContext.getImageData(0, 0, imgWidth, imgHeight).data;
+
     // Subtract 1 from both img width and height to count segments, not vertices
     const geometry = new THREE.PlaneGeometry(TERRAIN_WIDTH, TERRAIN_HEIGHT, imgWidth - 1, imgHeight - 1);
 
     const vertices = geometry.attributes.position.array;
+    const colours = new Float32Array(vertices.length);
 
+    let vertexColour = new THREE.Color();
     // For each pixel in the heightmap, adjust the vertex height
     for (let y = 0; y < imgHeight; y++) {
         for (let x = 0; x < imgWidth; x++) {
-            const heightIndex = (y * imgWidth + x) * 4; // Each pixel has 4 parts: RGBA
+            const pixelIndex = (y * imgWidth + x) * 4; // Each pixel has 4 parts: RGBA
             const vertexIndex = (y * imgWidth + x) * 3; // Each vertex has 3 parts: X, Y, Z
 
             // Change the z component (vertex index + 2)
-            vertices[vertexIndex + 2] = (imgData[heightIndex] / 255) * TERRAIN_DEPTH_SCALE - TERRAIN_OFFSET;
+            vertices[vertexIndex + 2] = (imgData[pixelIndex] / 255) * TERRAIN_DEPTH_SCALE;
+            if (vertices[vertexIndex + 2] < 1) {
+                vertices[vertexIndex + 2] = -40;
+            }
+            const biomeId = (biomeData[pixelIndex] << 16) + (biomeData[pixelIndex + 1] << 8) + biomeData[pixelIndex + 2];
+            switch(biomeId) {
+                case biomes.desert:
+                    vertexColour.setRGB(0.7, 0.6, 0.1);
+                    break;
+                case biomes.forest:
+                    vertexColour.setRGB(0.1, 0.8, 0.3);
+                    break;
+                case biomes.winterForest:
+                    vertexColour.setRGB(0.75, 0.8, 0.9);
+                    break;
+                case biomes.city:
+                    vertexColour.setRGB(0.3, 0.2, 0.5);
+                    break;
+                default:
+                    vertexColour.setRGB(0, 0.5, 0.9);
+            }
+
+            vertexColour.toArray(colours, vertexIndex);
+        
         }
     }
+
+    geometry.setAttribute('color', new THREE.BufferAttribute(colours, 3));
 
     // Recalculate normals
     geometry.attributes.position.needsUpdate = true;
     geometry.computeVertexNormals();
-    const material = new THREE.MeshStandardMaterial({ color: 0x66bb22, side: THREE.FrontSide});
+    const material = new THREE.MeshStandardMaterial({vertexColors: true, side: THREE.FrontSide});
 
     terrainMesh = new THREE.Mesh(geometry, material);
     terrainMesh.rotation.x = -Math.PI / 2;
@@ -140,11 +199,11 @@ function animate() {
     renderer.render(scene, camera);
 }
 
-
+// Key event handlers
 function onKeyDown(event) {
     if (controls.isLocked) {
 
-        const speed = 2;
+        const speed = 6;
 
         switch (event.code) {
             case 'KeyW':
