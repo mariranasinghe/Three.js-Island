@@ -1,4 +1,4 @@
-let scene, camera, renderer, controls;
+let scene, camera, renderer, controls, loader;
 let terrainMesh;
 let currentHeightMapUrl = 'world.png';
 
@@ -53,6 +53,12 @@ function init() {
     loadNewTerrain(currentHeightMapUrl);
     createWater();
     setupMapButtons();
+
+    loader = new THREE.OBJLoader()
+
+  loader.load("assets/deer.obj", function (obj) {obj.position.set(0, 50, 0); obj.scale.set(1, 1, 1);scene.add(obj);});
+
+
     window.addEventListener('resize', onWindowResize, false);
 }
 
