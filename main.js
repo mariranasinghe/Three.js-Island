@@ -36,8 +36,7 @@ function init() {
 
   // load skybox textures
   function pathStrings(filename, timeOfDay) {
-    const pathBase =
-      "https://media.githubusercontent.com/media/Entropite/Three.js-Island/main/textures/skybox/";
+    const pathBase = "textures/skybox/";
     const baseFilename = pathBase + timeOfDay + "/" + filename;
     const fileType = ".jpg";
     const sides = ["Back", "Front", "Top", "Bottom", "Right", "Left"];
