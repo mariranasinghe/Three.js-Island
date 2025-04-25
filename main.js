@@ -42,38 +42,12 @@ function init() {
     const sides = ["Back", "Front", "Top", "Bottom", "Right", "Left"];
     const pathStrings = sides.map((side) => {
       return baseFilename + "_" + side + fileType;
+      control.log("Loading skybox texture ", path);
+
+      return path;
     });
 
     return pathStrings;
-  }
-
-  function createMaterialArray(filename, timeOfDay) {
-    const imagePath = pathStrings(filename, timeOfDay);
-    const skyboxMat = imagePath.map((image) => {
-      let skyboxTex = new THREE.TextureLoader().load(image);
-
-      return new THREE.MeshBasicMaterial({
-        map: skyboxTex,
-        side: THREE.BackSide,
-      });
-    });
-
-    return skyboxMat;
-  }
-
-  // skybox meshes
-  function skyboxCreate() {
-    // daytime
-    const dayMat = createMaterialArray("day");
-    const skyboxGeo = new THREE.BoxGeometry(1000, 1000, 1000);
-    daySky = new THREE.Mesh(skyboxGeo, dayMat);
-
-    // night time
-    const nightMat = createMaterialArray("night");
-    nightSky = new THREE.Mesh(skyboxGeo, nightMat);
-
-    // add the daytime skybox to the scene
-    scene.add(daySky);
   }
 
   function changeSkybox() {
@@ -104,7 +78,7 @@ function init() {
     toggleDiv.style.top = "70px";
     toggleDiv.style.left = "10px";
     toggleDiv.style.zIndex = "100";
-    toggleDiv.style.background = "rgba(255, 255, 255, 0.7";
+    toggleDiv.style.background = "rgba(255, 255, 255, 0.7)";
     toggleDiv.style.padding = "5px";
     toggleDiv.style.borderRadius = "5px";
 
@@ -112,11 +86,48 @@ function init() {
     skyboxBtn.textContent = "Toggle Day/ Night";
     skyboxBtn.style.margin = "2px";
     skyboxBtn.style.padding = "5px 10px";
-    skyboxBtn.onclick = skyboxChange;
+    skyboxBtn.onclick = changeSkybox;
 
     toggleDiv.appendChild(skyboxBtn);
     document.body.appendChild(toggleDiv);
   }
+
+  function createMaterialArray(filename, timeOfDay) {
+    const imagePath = pathStrings(filename, timeOfDay);
+    const skyboxMat = imagePath.map((image) => {
+      let skyboxTex = new THREE.TextureLoader().load(image);
+
+      return new THREE.MeshBasicMaterial({
+        map: skyboxTex,
+        side: THREE.BackSide,
+      });
+    });
+
+    return skyboxMat;
+  }
+
+  // skybox meshes
+  function skyboxCreate() {
+    // daytime
+    const dayMat = createMaterialArray("sky", "day");
+    const skyboxGeo = new THREE.BoxGeometry(1000, 1000, 1000);
+    daySky = new THREE.Mesh(skyboxGeo, dayMat);
+
+    // night time
+    const nightMat = createMaterialArray("sky", "night");
+    nightSky = new THREE.Mesh(skyboxGeo, nightMat);
+
+    // add the daytime skybox to the scene
+    scene.add(daySky);
+  }
+
+  ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+  scene.add(ambientLight);
+
+  directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
+  directionalLight.position.set(50, 100, 50);
+  directionalLight.castShadow = true;
+  scene.add(directionalLight);
 
   skyboxCreate();
   SkyboxToggle();
@@ -137,13 +148,13 @@ function init() {
 
   document.addEventListener("keydown", onKeyDown);
 
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-  scene.add(ambientLight);
+  //   const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+  //   scene.add(ambientLight);
 
-  const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
-  directionalLight.position.set(50, 100, 50);
-  directionalLight.castShadow = true;
-  scene.add(directionalLight);
+  //   const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
+  //   directionalLight.position.set(50, 100, 50);
+  //   directionalLight.castShadow = true;
+  //   scene.add(directionalLight);
 
   // Load heightmap and create terrain
   loadNewTerrain(currentHeightMapUrl);
@@ -158,7 +169,7 @@ function init() {
     scene.add(obj);
   });
 
-  loader.load("assests/buoy.obj", function (obj) {
+  loader.load("assets/buoy.obj", function (obj) {
     obj.position.set(0, 50, 0);
     obj.scale.set(5, 5, 5);
 
