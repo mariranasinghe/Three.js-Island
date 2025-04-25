@@ -213,18 +213,22 @@ function createTerrain(heightMapTexture, biomeMapTexture) {
 }
 
 function createWater() {
-  const waterGeometry = new THREE.PlaneGeometry(10000, 10000); // Very large plane
+  const waterGeometry = new THREE.PlaneGeometry(10000, 10000, 50, 50); // Very large plane
+
   const waterMaterial = new THREE.MeshPhongMaterial({
     color: 0x006994,
     shininess: 60,
+    roughness: 0.1,
+    transmission: 0.9,
+    envMap: scene.background,
   });
-
-  waterMaterial.opacity = 1;
 
   const waterMesh = new THREE.Mesh(waterGeometry, waterMaterial);
   waterMesh.rotation.x = -Math.PI / 2;
   waterMesh.position.y = 1;
   waterMesh.receiveShadow = true;
+
+  window.waterMesh = waterMesh;
   scene.add(waterMesh);
 }
 
