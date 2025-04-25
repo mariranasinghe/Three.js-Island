@@ -219,7 +219,6 @@ function createWater() {
     shininess: 60,
   });
 
-  waterMaterial.transparent = true;
   waterMaterial.opacity = 0.8;
 
   const waterMesh = new THREE.Mesh(waterGeometry, waterMaterial);
