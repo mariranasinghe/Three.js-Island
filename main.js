@@ -64,12 +64,12 @@ function init() {
   // skybox meshes
   function skyboxCreate() {
     // daytime
-    const dayMat = createMaterialArray("sky", "day");
+    const dayMat = createMaterialArray("day");
     const skyboxGeo = new THREE.BoxGeometry(1000, 1000, 1000);
     daySky = new THREE.Mesh(skyboxGeo, dayMat);
 
     // night time
-    const nightMat = createMaterialArray("sky", "night");
+    const nightMat = createMaterialArray("night");
     nightSky = new THREE.Mesh(skyboxGeo, nightMat);
 
     // add the daytime skybox to the scene
