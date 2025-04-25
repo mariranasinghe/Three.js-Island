@@ -217,10 +217,7 @@ function createWater() {
 
   const waterMaterial = new THREE.MeshPhongMaterial({
     color: 0x006994,
-    roughness: 0.1,
-    transmission: 0.9,
-    tranparent: true,
-    opacity: 0.8,
+    shininess: 60,
   });
 
   const waterMesh = new THREE.Mesh(waterGeometry, waterMaterial);
@@ -228,7 +225,6 @@ function createWater() {
   waterMesh.position.y = 1;
   waterMesh.receiveShadow = true;
 
-  window.waterMesh = waterMesh;
   scene.add(waterMesh);
 }
 
