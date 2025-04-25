@@ -2,7 +2,8 @@ let terrainReady = false; // Flag to check if terrain is ready
 
 let scene, camera, renderer, controls, loader;
 let terrainMesh;
-let currentHeightMapUrl = 'world.png';
+let currentHeightMapUrl = "world.png";
+let daySky, nightSky;
 let biomeMap;
 
 const TERRAIN_WIDTH = 1000;
@@ -28,63 +29,187 @@ let trunkInstances;
 // Deer
 let deerInstances;
 
+// Wolf
+let wolfInstances;
+
 let leafModelReady = false;
 let trunkModelReady = false;
 let deerModelReady = false;
+let wolfModelReady = false;
 
 const biomes = {
-    desert: 0xFFFF00,
-    winterForest: 0x0000FF,
-    forest: 0x00FF00,
-    city: 0xFF0000
-}
+  desert: 0xffff00,
+  winterForest: 0x0000ff,
+  forest: 0x00ff00,
+  city: 0xff0000,
+};
 
 init();
 animate();
 
 function init() {
-    // Scene
-    scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x87CEEB); // Blue sky backgroudn
-    scene.fog = new THREE.Fog(0x87CEEB, TERRAIN_WIDTH / 2, TERRAIN_WIDTH * 1.5);
-    camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000);
-    camera.position.y = TERRAIN_DEPTH_SCALE *0.5;
-    camera.position.z = 6;
+  // Scene
+  scene = new THREE.Scene();
+  // scene.background = new THREE.Color(0x87ceeb); // Blue sky backgroudn
+  scene.fog = new THREE.Fog(0x87ceeb, TERRAIN_WIDTH / 2, TERRAIN_WIDTH * 1.5);
+  camera = new THREE.PerspectiveCamera(
+    75,
+    window.innerWidth / window.innerHeight,
+    0.1,
+    2000
+  );
+  camera.position.y = TERRAIN_DEPTH_SCALE * 0.5;
+  camera.position.z = 6;
 
-    // Renderer
-    renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.shadowMap.enabled = true;
-    document.body.appendChild(renderer.domElement);
+  let currentSkybox = "day"; // current skybox mode
 
-    // Use THREE namespace for controls
+  // load skybox textures
+  function pathStrings(filename, timeOfDay) {
+    const pathBase = "textures/skybox/";
+    const baseFilename = pathBase + timeOfDay + "/" + filename;
+    const fileType = ".jpg";
+    const sides = ["Back", "Front", "Top", "Bottom", "Right", "Left"];
+    const pathStrings = sides.map((side) => {
+      return baseFilename + "_" + side + fileType;
+      control.log("Loading skybox texture ", path); // error checking
+
+      return path;
+    });
+
+    return pathStrings;
+  }
+
+  // toggle to change the skybox based on the current mode
+  function changeSkybox() {
+    if (currentSkybox === "day") {
+      scene.remove(daySky);
+      scene.add(nightSky);
+      currentSkybox = "night";
+
+      // adjust lighting for the night sky skybox
+      directionalLight.intensity = 0.1;
+      ambientLight.intensity = 0.2;
+    } else {
+      scene.remove(nightSky);
+      scene.add(daySky);
+      currentSkybox = "day";
+
+      // adjust lighting for the day time skybox
+      directionalLight.intensity = 1.0;
+      ambientLight.intensity = 0.5;
+    }
+  }
+
+  // UI button creation
+  function SkyboxToggle() {
+    const toggleDiv = document.createElement("div");
+    toggleDiv.id = "skyboxToggle";
+    toggleDiv.style.position = "absolute";
+    toggleDiv.style.top = "70px";
+    toggleDiv.style.left = "10px";
+    toggleDiv.style.zIndex = "100";
+    toggleDiv.style.background = "rgba(255, 255, 255, 0.7)";
+    toggleDiv.style.padding = "5px";
+    toggleDiv.style.borderRadius = "5px";
+
+    const skyboxBtn = document.createElement("button");
+    skyboxBtn.textContent = "Toggle Day/ Night";
+    skyboxBtn.style.margin = "2px";
+    skyboxBtn.style.padding = "5px 10px";
+    skyboxBtn.onclick = changeSkybox;
+
+    toggleDiv.appendChild(skyboxBtn);
+    document.body.appendChild(toggleDiv);
+  }
+
+  function createMaterialArray(filename, timeOfDay) {
+    const imagePath = pathStrings(filename, timeOfDay);
+    const skyboxMat = imagePath.map((image) => {
+      let skyboxTex = new THREE.TextureLoader().load(image);
+
+      return new THREE.MeshBasicMaterial({
+        map: skyboxTex,
+        side: THREE.BackSide,
+      });
+    });
+
+    return skyboxMat;
+  }
+
+  // skybox meshes
+  function skyboxCreate() {
+    // daytime
+    const dayMat = createMaterialArray("sky", "day");
+    const skyboxGeo = new THREE.BoxGeometry(1000, 1000, 1000);
+    daySky = new THREE.Mesh(skyboxGeo, dayMat);
+
+    // night time
+    const nightMat = createMaterialArray("sky", "night");
+    nightSky = new THREE.Mesh(skyboxGeo, nightMat);
+
+    // add the daytime skybox to the scene
+    scene.add(daySky);
+  }
+
+  ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+  scene.add(ambientLight);
+
+  directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
+  directionalLight.position.set(50, 100, 50);
+  directionalLight.castShadow = true;
+  scene.add(directionalLight);
+
+  skyboxCreate();
+  SkyboxToggle();
+
+  // Renderer
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.shadowMap.enabled = true;
+  document.body.appendChild(renderer.domElement);
+
+  // Use pointer lock controls
+  controls = new THREE.PointerLockControls(camera, document.body);
+  renderer.domElement.addEventListener("click", function () {
+    controls.lock();
+  });
+
     controls = new THREE.PointerLockControls(camera, document.body);
     renderer.domElement.addEventListener('click', function() {controls.lock();});
 
-    scene.add(controls.getObject());
+  scene.add(controls.getObject());
 
-    document.addEventListener('keydown', onKeyDown);
+  document.addEventListener("keydown", onKeyDown);
 
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-    scene.add(ambientLight);
+  //   const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+  //   scene.add(ambientLight);
 
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
-    directionalLight.position.set(50, 100, 50);
-    directionalLight.castShadow = true;
-    scene.add(directionalLight);
+  //   const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
+  //   directionalLight.position.set(50, 100, 50);
+  //   directionalLight.castShadow = true;
+  //   scene.add(directionalLight);
 
-
-    // Load heightmap and create terrain
-    loadNewTerrain(currentHeightMapUrl);
-    createWater();
-    setupMapButtons();
+  // Load heightmap and create terrain
+  loadNewTerrain(currentHeightMapUrl);
+  createWater();
+  setupMapButtons();
 
     loader = new THREE.OBJLoader();
     // Default model directory is the assets folder
     loader.setPath("assets/");
 
+
+  // Load the buoy
+  loader.load("buoy.obj", function (obj) {
+    obj.position.set(-50, 2, 0);
+    obj.scale.set(1, 1, 1);
+
+    scene.add(obj);
+  });
+
     loadTreeModel();
-    loadDeerModel(); // Load deer model
+    loadDeerModel(); 
+    loadWolfModel();
 
     window.addEventListener('resize', onWindowResize, false);
 }
@@ -96,6 +221,9 @@ function checkAndPlaceAssets() {
     }
     if (terrainReady && deerModelReady) {
         placeDeer();
+    }
+    if (terrainReady && wolfModelReady) {
+        placeWolves();
     }
 }
 
@@ -145,7 +273,8 @@ function placeTrees() {
                 instanceCount++;
             }
         }
-        if (instanceCount >= MAX_TREES) break; // Break outer loop too
+        if (instanceCount >= MAX_TREES)
+          break;
     }
 
     // Update both instances
@@ -175,7 +304,6 @@ function placeDeer() {
             const terrainHeight = terrainVertices[vertexIndex + 2];
             const biomeId = biomeMap[i][j];
 
-            // Increase spawn chance drastically for debugging
             if (terrainHeight > 1 && biomeId === biomes.forest && Math.random() < 0.0008) { 
                 const worldX = terrainVertices[vertexIndex];
                 const worldY = terrainHeight;
@@ -197,6 +325,49 @@ function placeDeer() {
     deerInstances.instanceMatrix.needsUpdate = true;
 }
 
+function placeWolves() {
+    if (!terrainReady || !wolfInstances) {
+        return;
+    }
+
+    const temp = new THREE.Object3D();
+    let instanceCount = 0;
+    if (!terrainMesh || !terrainMesh.geometry || !terrainMesh.geometry.attributes || !terrainMesh.geometry.attributes.position) { return; }
+    const terrainVertices = terrainMesh.geometry.attributes.position.array;
+    const imgWidth = terrainMesh.geometry.parameters.widthSegments + 1;
+    const imgHeight = terrainMesh.geometry.parameters.heightSegments + 1;
+
+    for (let i = 0; i < imgHeight; i++) {
+        for (let j = 0; j < imgWidth; j++) {
+            if (instanceCount >= MAX_WOLVES) break;
+            const vertexIndex = (i * imgWidth + j) * 3;
+            if (vertexIndex + 2 >= terrainVertices.length || !biomeMap || !biomeMap[i] || biomeMap[i][j] === undefined) { continue; }
+            const terrainHeight = terrainVertices[vertexIndex + 2];
+            const biomeId = biomeMap[i][j];
+
+            // Only spawn in winter forest biome
+            if (terrainHeight > 1 && biomeId === biomes.winterForest && Math.random() < 0.0008) { 
+                const worldX = terrainVertices[vertexIndex];
+                const worldY = terrainHeight;
+                const worldZ = -terrainVertices[vertexIndex + 1];
+                
+                temp.position.set(worldX, worldY, worldZ);
+                temp.rotation.y = Math.random() * Math.PI * 2;
+                const scale = 0.4;
+                temp.scale.set(scale, scale, scale);
+
+                temp.updateMatrix();
+                wolfInstances.setMatrixAt(instanceCount, temp.matrix);
+                instanceCount++;
+            }
+        }
+        if (instanceCount >= MAX_WOLVES) 
+          break;
+    }
+    wolfInstances.count = instanceCount;
+    wolfInstances.instanceMatrix.needsUpdate = true;
+}
+
 function loadTreeModel() {
     // Reset
     leafModelReady = false;
@@ -206,17 +377,13 @@ function loadTreeModel() {
     leafInstances = null;
     trunkInstances = null;
 
-    // Use the global loader instance
     loader.load("Tree low.obj", (object) => {
-        if (!object.children || object.children.length < 2) {
-            return; // Ensure we have at least two children
-        }
 
         const leafGeometry = object.children[0].geometry;
         const leafMaterial = new THREE.MeshStandardMaterial({ color: "green", side: THREE.DoubleSide });
 
         const trunkGeometry = object.children[1].geometry;
-        const trunkMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513 });
+        const trunkMaterial = new THREE.MeshStandardMaterial({color: 0x8B4513 });
 
         leafInstances = new THREE.InstancedMesh(leafGeometry, leafMaterial, MAX_TREES);
         leafInstances.castShadow = true;
@@ -230,7 +397,6 @@ function loadTreeModel() {
         scene.add(trunkInstances);
         trunkModelReady = true;
 
-        // Call placement check after both are potentially ready
         checkAndPlaceAssets();
     });
 }
@@ -243,33 +409,41 @@ function loadDeerModel() {
     const textureLoader = new THREE.TextureLoader();
     const deerTexture = textureLoader.load('textures/deer_fur.jpeg');
 
-    console.log("Loading deer model..."); // Log start of load
+    console.log("Loading deer model...");
     loader.load("deer.obj", (object) => {
-        console.log("Deer OBJ loaded, processing..."); // Log callback entry
-        if (!object.children || object.children.length === 0) { 
-             console.error("Deer OBJ has no children meshes.");
-             return; 
-        }
-        if (!object.children[0].geometry) {
-             console.error("Deer OBJ child 0 has no geometry.");
-             return;
-        }
-         console.log("Deer geometry found.");
          const deerGeometry = object.children[0].geometry; 
-         const deerMaterial = new THREE.MeshStandardMaterial({ map: deerTexture });
+         const deerMaterial = new THREE.MeshStandardMaterial({map: deerTexture });
 
         deerInstances = new THREE.InstancedMesh(deerGeometry, deerMaterial, MAX_DEER);
         deerInstances.castShadow = true;
         deerInstances.receiveShadow = true;
         scene.add(deerInstances);
         deerModelReady = true;
-        console.log("Deer InstancedMesh created and added to scene.");
 
         checkAndPlaceAssets();
-    }, 
-    undefined, // onProgress
-    (error) => { // onError
-        console.error("Error loading deer.obj:", error);
+    });
+}
+
+function loadWolfModel() {
+    wolfModelReady = false;
+    if (wolfInstances) scene.remove(wolfInstances);
+    wolfInstances = null;
+
+    const textureLoader = new THREE.TextureLoader();
+    const wolfTexture = textureLoader.load('textures/wolf_fur.jpg');
+
+    loader.load("wolf.obj", (object) => {
+
+         const wolfGeometry = object.children[0].geometry; 
+         const wolfMaterial = new THREE.MeshStandardMaterial({map: wolfTexture});
+
+        wolfInstances = new THREE.InstancedMesh(wolfGeometry, wolfMaterial, MAX_WOLVES);
+        wolfInstances.castShadow = true;
+        wolfInstances.receiveShadow = true;
+        scene.add(wolfInstances);
+        wolfModelReady = true;
+
+        checkAndPlaceAssets();
     });
 }
 
@@ -280,11 +454,21 @@ function setupMapButtons() {
     const hawaiiButton = document.getElementById('hawaiiBtn');
     const worldButton = document.getElementById('worldBtn');
 
-    japanButton.addEventListener('click', () => {loadNewTerrain('japan.png');});
-    sriLankaButton.addEventListener('click', () => {loadNewTerrain('sri lanka.png');});
-    defaultButton.addEventListener('click', () => {loadNewTerrain('default.png');});
-    hawaiiButton.addEventListener('click', () => {loadNewTerrain('hawaii.png');});
-    worldButton.addEventListener('click', () => {loadNewTerrain('world.png');});
+  japanButton.addEventListener("click", () => {
+    loadNewTerrain("japan.png");
+  });
+  sriLankaButton.addEventListener("click", () => {
+    loadNewTerrain("sri lanka.png");
+  });
+  defaultButton.addEventListener("click", () => {
+    loadNewTerrain("default.png");
+  });
+  hawaiiButton.addEventListener("click", () => {
+    loadNewTerrain("hawaii.png");
+  });
+  worldButton.addEventListener("click", () => {
+    loadNewTerrain("world.png");
+  });
 }
 
 function loadNewTerrain(mapFilename) {
@@ -293,11 +477,7 @@ function loadNewTerrain(mapFilename) {
         scene.remove(terrainMesh);
         if(terrainMesh.geometry) terrainMesh.geometry.dispose();
         if(terrainMesh.material) {
-             if (Array.isArray(terrainMesh.material)) {
-                  terrainMesh.material.forEach(m => m.dispose());
-             } else {
-                  terrainMesh.material.dispose();
-             }
+            terrainMesh.material.dispose();
         }
         terrainMesh = null;
     }
@@ -314,166 +494,183 @@ function loadNewTerrain(mapFilename) {
         deerInstances.count = 0;
         deerInstances.instanceMatrix.needsUpdate = true;
     }
+    if (wolfInstances) {
+        wolfInstances.count = 0;
+        wolfInstances.instanceMatrix.needsUpdate = true;
+    }
 
-    currentHeightMapUrl = "textures/" + mapFilename;
-    const biomeMapUrl = "textures/" + mapFilename.split(".")[0] + "-biome.png";
-    const textureLoader = new THREE.TextureLoader();
+  currentHeightMapUrl = "textures/" + mapFilename;
 
-    textureLoader.load(currentHeightMapUrl,
-        (heightMapTexture) => {
-            textureLoader.load(biomeMapUrl,
-                (biomeMapTexture) => {
-                    createTerrain(heightMapTexture, biomeMapTexture);
-                }
-            );
-        },
+  const loader = new THREE.TextureLoader();
+  loader.load(currentHeightMapUrl, function (texture) {
+    loader.load(
+      "textures/" + mapFilename.split(".")[0] + "-biome.png",
+      function (biomeTexture) {
+        console.log("textures/" + mapFilename.split(".")[0] + "-biome.png");
+        createTerrain(texture, biomeTexture);
+      }
     );
+  });
+  return;
 }
 
 function createTerrain(heightMapTexture, biomeMapTexture) {
-    const img = heightMapTexture.image;
-    const imgWidth = img.width;
-    const imgHeight = img.height;
+  if (terrainMesh) scene.remove(terrainMesh);
+  const img = heightMapTexture.image;
+  const imgWidth = img.width;
+  const imgHeight = img.height;
 
-    const biomeImg = biomeMapTexture.image;
+  const biomeImg = biomeMapTexture.image;
 
-    if (biomeImg.width != imgWidth || biomeImg.height != imgHeight) {
-        console.error("Height map and biome map are not the same size");
-        return;
+  if (biomeImg.width != imgWidth || biomeImg.height != imgHeight) {
+    console.error("Height map and biome map are not the same size");
+    return;
+  }
+
+  // Use canvas to access pixel information
+  const canvas = document.createElement("canvas");
+  canvas.width = imgWidth;
+  canvas.height = imgHeight;
+  const context = canvas.getContext("2d", {willReadFrequently: true});
+  context.drawImage(img, 0, 0);
+  const imgData = context.getImageData(0, 0, imgWidth, imgHeight).data;
+
+  // Use another canvas to access biome information
+  const biomeCanvas = document.createElement("canvas");
+  biomeCanvas.width = imgWidth;
+  biomeCanvas.height = imgHeight;
+  const biomeContext = biomeCanvas.getContext("2d", {
+    willReadFrequently: true,
+  });
+  biomeContext.drawImage(biomeImg, 0, 0);
+  const biomeData = biomeContext.getImageData(0, 0, imgWidth, imgHeight).data;
+
+  // Subtract 1 from both img width and height to count segments, not vertices
+  const geometry = new THREE.PlaneGeometry(
+    TERRAIN_WIDTH,
+    TERRAIN_HEIGHT,
+    imgWidth - 1,
+    imgHeight - 1
+  );
+
+  biomeMap = new Array(imgHeight);
+  for(i = 0; i < biomeMap.length; i++) {
+    biomeMap[i] = new Array(imgWidth);
+  }
+
+  const vertices = geometry.attributes.position.array;
+  const colours = new Float32Array(vertices.length);
+
+  let vertexColour = new THREE.Color();
+  // For each pixel in the heightmap, adjust the vertex height
+  for (let y = 0; y < imgHeight; y++) {
+    for (let x = 0; x < imgWidth; x++) {
+      const pixelIndex = (y * imgWidth + x) * 4; // Each pixel has 4 parts: RGBA
+      const vertexIndex = (y * imgWidth + x) * 3; // Each vertex has 3 parts: X, Y, Z
+
+      // Change the z component (vertex index + 2)
+      vertices[vertexIndex + 2] =
+        (imgData[pixelIndex] / 255) * TERRAIN_DEPTH_SCALE;
+      if (vertices[vertexIndex + 2] < 1) {
+        vertices[vertexIndex + 2] = -40;
+      }
+      const biomeId = (biomeData[pixelIndex] << 16) + (biomeData[pixelIndex + 1] << 8) + biomeData[pixelIndex + 2];
+      biomeMap[y][x] = biomeId; 
+      switch (biomeId) {
+        case biomes.desert:
+          vertexColour.setRGB(0.7, 0.6, 0.1);
+          break;
+        case biomes.forest:
+          vertexColour.setRGB(0.1, 0.8, 0.3);
+          break;
+        case biomes.winterForest:
+          vertexColour.setRGB(0.75, 0.8, 0.9);
+          break;
+        case biomes.city:
+          vertexColour.setRGB(0.3, 0.2, 0.5);
+          break;
+        default:
+          vertexColour.setRGB(0, 0.5, 0.9);
+      }
+
+      vertexColour.toArray(colours, vertexIndex);
     }
+  }
 
-    // Use canvas to access pixel information
-    const canvas = document.createElement('canvas');
-    canvas.width = imgWidth;
-    canvas.height = imgHeight;
-    const context = canvas.getContext('2d', {willReadFrequently: true});
-    context.drawImage(img, 0, 0);
-    const imgData = context.getImageData(0, 0, imgWidth, imgHeight).data;
+  geometry.setAttribute("color", new THREE.BufferAttribute(colours, 3));
 
-    // Use another canvas to access biome information
-    const biomeCanvas = document.createElement('canvas');
-    biomeCanvas.width = imgWidth;
-    biomeCanvas.height = imgHeight;
-    const biomeContext = biomeCanvas.getContext('2d', {willReadFrequently: true});
-    biomeContext.drawImage(biomeImg, 0, 0);
-    const biomeData = biomeContext.getImageData(0, 0, imgWidth, imgHeight).data;
+  // Recalculate normals
+  geometry.attributes.position.needsUpdate = true;
+  geometry.computeVertexNormals();
+  const material = new THREE.MeshStandardMaterial({
+    vertexColors: true,
+    side: THREE.FrontSide,
+  });
 
-    // Subtract 1 from both img width and height to count segments, not vertices
-    const geometry = new THREE.PlaneGeometry(TERRAIN_WIDTH, TERRAIN_HEIGHT, imgWidth - 1, imgHeight - 1);
+  if (terrainMesh) scene.remove(terrainMesh);
+  terrainMesh = new THREE.Mesh(geometry, material);
+  terrainMesh.rotation.x = -Math.PI / 2;
+  terrainMesh.receiveShadow = true;
+  terrainMesh.castShadow = true;
+  scene.add(terrainMesh);
 
-    const vertices = geometry.attributes.position.array;
-    const colours = new Float32Array(vertices.length);
-    // Biome map keeps track of the biome of each pixel without having to use the image to look it up
-    biomeMap = new Array(imgHeight);
-
-    for (let i = 0; i < imgHeight; i++) {
-        biomeMap[i] = new Array(imgWidth);
-    }
-
-    let vertexColour = new THREE.Color();
-    // For each pixel in the heightmap, adjust the vertex height
-    for (let y = 0; y < imgHeight; y++) {
-        for (let x = 0; x < imgWidth; x++) {
-            const pixelIndex = (y * imgWidth + x) * 4; // Each pixel has 4 parts: RGBA
-            const vertexIndex = (y * imgWidth + x) * 3; // Each vertex has 3 parts: X, Y, Z
-
-            // Change the z component (vertex index + 2)
-            let height = (imgData[pixelIndex] / 255) * TERRAIN_DEPTH_SCALE;
-            if (height < 1) {
-                height = -40;
-            }
-            vertices[vertexIndex + 2] = height;
-            const biomeId = (biomeData[pixelIndex] << 16) | (biomeData[pixelIndex + 1] << 8) | biomeData[pixelIndex + 2];
-            biomeMap[y][x] = biomeId;
-            switch(biomeId) {
-                case biomes.desert:
-                    vertexColour.setRGB(0.7, 0.6, 0.1);
-                    break;
-                case biomes.forest:
-                    vertexColour.setRGB(0.1, 0.8, 0.3);
-                    break;
-                case biomes.winterForest:
-                    vertexColour.setRGB(0.75, 0.8, 0.9);
-                    break;
-                case biomes.city:
-                    vertexColour.setRGB(0.3, 0.2, 0.5);
-                    break;
-                default:
-                    vertexColour.setRGB(0, 0.5, 0.9);
-            }
-
-            vertexColour.toArray(colours, vertexIndex);
-        
-        }
-    }
-
-    geometry.setAttribute('color', new THREE.BufferAttribute(colours, 3));
-
-    // Recalculate normals
-    geometry.attributes.position.needsUpdate = true;
-    geometry.computeVertexNormals();
-    const material = new THREE.MeshStandardMaterial({vertexColors: true, side: THREE.FrontSide});
-
-    terrainMesh = new THREE.Mesh(geometry, material);
-    terrainMesh.rotation.x = -Math.PI / 2;
-    terrainMesh.receiveShadow = true;
-    terrainMesh.castShadow = true;
-    scene.add(terrainMesh);
-
-    console.log("Terrain created and added to scene.");
-    terrainReady = true;
-    checkAndPlaceAssets(); // Use check function here
+  terrainReady = true; // Set the flag indicating terrain is ready
+  checkAndPlaceAssets(); // Attempt to place assets now that terrain is ready
 }
 
 function createWater() {
-    const waterGeometry = new THREE.PlaneGeometry(10000, 10000); // Very large plane
-    const waterMaterial = new THREE.MeshPhongMaterial({color: 0x006994, shininess: 60});
+  const waterGeometry = new THREE.PlaneGeometry(10000, 10000); // Very large plane
 
-    const waterMesh = new THREE.Mesh(waterGeometry, waterMaterial);
-    waterMesh.rotation.x = -Math.PI / 2;
-    waterMesh.position.y = 1;
-    waterMesh.receiveShadow = true;
-    scene.add(waterMesh);
+  const waterMaterial = new THREE.MeshPhongMaterial({
+    color: 0x006994,
+    shininess: 60,
+  });
+
+  const waterMesh = new THREE.Mesh(waterGeometry, waterMaterial);
+  waterMesh.rotation.x = -Math.PI / 2;
+  waterMesh.position.y = 1;
+  waterMesh.receiveShadow = true;
+
+  scene.add(waterMesh);
 }
 
 function onWindowResize() {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
 }
 
 function animate() {
-    requestAnimationFrame(animate);
+  requestAnimationFrame(animate);
 
-    renderer.render(scene, camera);
+  renderer.render(scene, camera);
 }
 
 // Key event handlers
 function onKeyDown(event) {
-    if (controls.isLocked) {
+  if (controls.isLocked) {
+    const speed = 6;
 
-        const speed = 6;
-
-        switch (event.code) {
-            case 'KeyW':
-                controls.moveForward(speed);
-                break;
-            case 'KeyA':
-                controls.moveRight(-speed);
-                break;
-            case 'KeyS':
-                controls.moveForward(-speed);
-                break;
-            case 'KeyD':
-                controls.moveRight(speed);
-                break;
-            case 'Space':
-                controls.getObject().position.y += speed;
-                break;
-            case 'ShiftLeft':
-            case 'KeyQ':
-                controls.getObject().position.y -= speed;
-                break;
-        }   
+    switch (event.code) {
+      case "KeyW":
+        controls.moveForward(speed);
+        break;
+      case "KeyA":
+        controls.moveRight(-speed);
+        break;
+      case "KeyS":
+        controls.moveForward(-speed);
+        break;
+      case "KeyD":
+        controls.moveRight(speed);
+        break;
+      case "Space":
+        controls.getObject().position.y += speed;
+        break;
+      case "ShiftLeft":
+      case "KeyQ":
+        controls.getObject().position.y -= speed;
+        break;
     }
+  }
 }
