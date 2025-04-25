@@ -68,6 +68,22 @@ function init() {
     scene.add(obj);
   });
 
+  const mtlLoader = new THREE.MTLLoader();
+  mtlLoader.setPath("assests/");
+  mtlLoader.load("buoy.mtl", function (materials) {
+    materials.preload();
+
+    const loader = new THREE.OBJLoader();
+    loader.setMaterials(materials);
+    loader.setPath("assets/");
+    loader.load("buoy.obj", function (buoy) {
+      buoy.position.set(100, 2, 100);
+      buoy.scale.set(5, 5, 5);
+
+      scene.add(buoy);
+    });
+  });
+
   window.addEventListener("resize", onWindowResize, false);
 }
 
