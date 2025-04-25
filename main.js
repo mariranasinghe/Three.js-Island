@@ -219,7 +219,7 @@ function createWater() {
     shininess: 60,
   });
 
-  waterMaterial.opacity = 0.8;
+  waterMaterial.opacity = 1;
 
   const waterMesh = new THREE.Mesh(waterGeometry, waterMaterial);
   waterMesh.rotation.x = -Math.PI / 2;
