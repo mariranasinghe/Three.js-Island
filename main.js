@@ -21,7 +21,7 @@ animate();
 function init() {
   // Scene
   scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x87ceeb); // Blue sky backgroudn
+  // scene.background = new THREE.Color(0x87ceeb); // Blue sky backgroudn
   scene.fog = new THREE.Fog(0x87ceeb, TERRAIN_WIDTH / 2, TERRAIN_WIDTH * 1.5);
   camera = new THREE.PerspectiveCamera(
     75,
@@ -42,7 +42,7 @@ function init() {
     const sides = ["Back", "Front", "Top", "Bottom", "Right", "Left"];
     const pathStrings = sides.map((side) => {
       return baseFilename + "_" + side + fileType;
-      control.log("Loading skybox texture ", path);
+      control.log("Loading skybox texture ", path); // error checking
 
       return path;
     });
@@ -50,6 +50,7 @@ function init() {
     return pathStrings;
   }
 
+  // toggle to change the skybox based on the current mode
   function changeSkybox() {
     if (currentSkybox === "day") {
       scene.remove(daySky);
@@ -169,6 +170,7 @@ function init() {
     scene.add(obj);
   });
 
+  // Load the buoy
   loader.load("assets/buoy.obj", function (obj) {
     obj.position.set(-50, 2, 0);
     obj.scale.set(1, 1, 1);
