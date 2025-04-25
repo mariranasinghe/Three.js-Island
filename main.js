@@ -1,6 +1,7 @@
 let scene, camera, renderer, controls, loader;
 let terrainMesh;
 let currentHeightMapUrl = "world.png";
+let daySky, nightSky;
 
 const TERRAIN_WIDTH = 1000;
 const TERRAIN_HEIGHT = 1000;
@@ -30,6 +31,96 @@ function init() {
   );
   camera.position.y = TERRAIN_DEPTH_SCALE * 0.5;
   camera.position.z = 6;
+
+  let currentSkybox = "day"; // current skybox mode
+
+  // load skybox textures
+  function pathStrings(filename, timeOfDay) {
+    const pathBase =
+      "https://media.githubusercontent.com/media/Entropite/Three.js-Island/main/textures/skybox/";
+    const baseFilename = pathBase + timeOfDay + "/" + filename;
+    const fileType = ".jpg";
+    const sides = ["Back", "Front", "Top", "Bottom", "Right", "Left"];
+    const pathStrings = sides.map((side) => {
+      return baseFilename + "_" + side + fileType;
+    });
+
+    return pathStrings;
+  }
+
+  function createMaterialArray(filename, timeOfDay) {
+    const imagePath = pathStrings(filename, timeOfDay);
+    const skyboxMat = imagePath.map((image) => {
+      let skyboxTex = new THREE.TextureLoader().load(image);
+
+      return new THREE.MeshBasicMaterial({
+        map: skyboxTex,
+        side: THREE.BackSide,
+      });
+    });
+
+    return skyboxMat;
+  }
+
+  // skybox meshes
+  function skyboxCreate() {
+    // daytime
+    const dayMat = createMaterialArray("sky", "day");
+    const skyboxGeo = new THREE.BoxGeometry(1000, 1000, 1000);
+    daySky = new THREE.Mesh(skyboxGeo, dayMat);
+
+    // night time
+    const nightMat = createMaterialArray("sky", "night");
+    nightSky = new THREE.Mesh(skyboxGeo, nightMat);
+
+    // add the daytime skybox to the scene
+    scene.add(daySky);
+  }
+
+  function changeSkybox() {
+    if (currentSkybox === "day") {
+      scene.remove(daySky);
+      scene.add(nightSky);
+      currentSkybox = "night";
+
+      // adjust lighting for the night sky skybox
+      directionalLight.intensity = 0.1;
+      ambientLight.intensity = 0.2;
+    } else {
+      scene.remove(nightSky);
+      scene.add(daySky);
+      currentSkybox = "day";
+
+      // adjust lighting for the day time skybox
+      directionalLight.intensity = 1.0;
+      ambientLight.intensity = 0.5;
+    }
+  }
+
+  // UI button creation
+  function SkyboxToggle() {
+    const toggleDiv = document.createElement("div");
+    toggleDiv.id = "skyboxToggle";
+    toggleDiv.style.position = "absolute";
+    toggleDiv.style.top = "70px";
+    toggleDiv.style.left = "10px";
+    toggleDiv.style.zIndex = "100";
+    toggleDiv.style.background = "rgba(255, 255, 255, 0.7";
+    toggleDiv.style.padding = "5px";
+    toggleDiv.style.borderRadius = "5px";
+
+    const skyboxBtn = document.createElement("button");
+    skyboxBtn.textContent = "Toggle Day/ Night";
+    skyboxBtn.style.margin = "2px";
+    skyboxBtn.style.padding = "5px 10px";
+    skyboxBtn.onclick = skyboxChange;
+
+    toggleDiv.appendChild(skyboxBtn);
+    document.body.appendChild(toggleDiv);
+  }
+
+  skyboxCreate();
+  SkyboxToggle();
 
   // Renderer
   renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -69,8 +160,8 @@ function init() {
   });
 
   loader.load("assests/buoy.obj", function (obj) {
-    obj.position.set(30, 2, 40);
-    obj.scale.set(2, 2, 2);
+    obj.position.set(0, 50, 0);
+    obj.scale.set(5, 5, 5);
 
     scene.add(obj);
   });
