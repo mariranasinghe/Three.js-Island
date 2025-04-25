@@ -78,7 +78,7 @@ function init() {
     loader.setPath("assets/");
     loader.load("buoy.obj", function (buoy) {
       buoy.position.set(100, 2, 100);
-      buoy.scale.set(5, 5, 5);
+      buoy.scale.set(1, 1, 1);
 
       scene.add(buoy);
     });
