@@ -213,7 +213,7 @@ function createTerrain(heightMapTexture, biomeMapTexture) {
 }
 
 function createWater() {
-  const waterGeometry = new THREE.PlaneGeometry(10000, 10000, 50, 50); // Very large plane
+  const waterGeometry = new THREE.PlaneGeometry(10000, 10000); // Very large plane
 
   const waterMaterial = new THREE.MeshPhongMaterial({
     color: 0x006994,
