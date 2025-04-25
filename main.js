@@ -60,17 +60,6 @@ function init() {
   createWater();
   setupMapButtons();
 
-  // Add a buoy
-  const buoyGeo = new THREE.CylinderGeometry(2, 2, 6, 16);
-  const buoyMat = new THREE.MeshStandardMaterial({
-    color: 0xff0000,
-  });
-
-  const buoyMesh = new THREE.Mesh(buoyGeo, buoyMat);
-  buoyMesh.position.set(20, 4, 20);
-  buoyMesh.castShadow = true;
-  scene.add(buoyMesh);
-
   loader = new THREE.OBJLoader();
 
   loader.load("assets/deer.obj", function (obj) {
@@ -231,7 +220,7 @@ function createWater() {
   });
 
   waterMaterial.transparent = true;
-  waterMaterial.opacity = 0.6;
+  waterMaterial.opacity = 0.8;
 
   const waterMesh = new THREE.Mesh(waterGeometry, waterMaterial);
   waterMesh.rotation.x = -Math.PI / 2;
