@@ -68,20 +68,19 @@ function init() {
     scene.add(obj);
   });
 
-  const mtlLoader = new THREE.MTLLoader();
-  mtlLoader.setPath("assests/");
-  mtlLoader.load("buoy.mtl", function (materials) {
-    materials.preload();
+  loader.load("assests/buoy.obj", function (obj) {
+    obj.position.set(30, 2, 40);
+    obj.scale.set(2, 2, 2);
 
-    const loader = new THREE.OBJLoader();
-    loader.setMaterials(materials);
-    loader.setPath("assets/");
-    loader.load("buoy.obj", function (buoy) {
-      buoy.position.set(0, 53, 0);
-      buoy.scale.set(5, 5, 5);
-
-      scene.add(buoy);
+    obj.traverse(function (child) {
+      if (child instanceof THREE.Mesh) {
+        child.material = new THREE.MeshStandardMaterial({
+          color: 0xffee00,
+        });
+      }
     });
+
+    scene.add(obj);
   });
 
   window.addEventListener("resize", onWindowResize, false);
