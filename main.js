@@ -1,6 +1,6 @@
-let terrainReady = false; // Flag to check if terrain is ready
+let terrainReady = false;
 
-let scene, camera, renderer, controls, loader;
+let scene, camera, renderer, controls, loader, textureLoader;
 let terrainMesh;
 let currentHeightMapUrl = "world.png";
 let daySky, nightSky;
@@ -32,10 +32,14 @@ let deerInstances;
 // Wolf
 let wolfInstances;
 
+// Snake
+let snakeInstances;
+
 let leafModelReady = false;
 let trunkModelReady = false;
 let deerModelReady = false;
 let wolfModelReady = false;
+let snakeModelReady = false;
 
 const biomes = {
   desert: 0xffff00,
@@ -194,6 +198,8 @@ function init() {
   createWater();
   setupMapButtons();
 
+  textureLoader = new THREE.TextureLoader();
+
     loader = new THREE.OBJLoader();
     // Default model directory is the assets folder
     loader.setPath("assets/");
@@ -207,23 +213,31 @@ function init() {
     scene.add(obj);
   });
 
-    loadTreeModel();
-    loadDeerModel(); 
-    loadWolfModel();
+  loadTreeModel();
+  loadDeerModel();
+  loadWolfModel();
+  loadSnakeModel();
+
+  checkAndPlaceAssets();
 
     window.addEventListener('resize', onWindowResize, false);
 }
 
 // Combined placement check
 function checkAndPlaceAssets() {
-    if (terrainReady && leafModelReady && trunkModelReady) {
-        placeTrees();
-    }
-    if (terrainReady && deerModelReady) {
-        placeDeer();
-    }
-    if (terrainReady && wolfModelReady) {
-        placeWolves();
+    if(terrainReady) {
+        if (leafModelReady && trunkModelReady) {
+            placeTrees();
+        }
+        if (deerModelReady) {
+            placeDeer();
+        }
+        if (wolfModelReady) {
+            placeWolves();
+        }
+        if (snakeModelReady) {
+          placeSnakes();
+        }
     }
 }
 
@@ -273,8 +287,6 @@ function placeTrees() {
                 instanceCount++;
             }
         }
-        if (instanceCount >= MAX_TREES)
-          break;
     }
 
     // Update both instances
@@ -285,88 +297,57 @@ function placeTrees() {
 }
 
 function placeDeer() {
-    if (!terrainReady || !deerInstances) {
-        return;
-    }
+    placeAnimal(deerInstances, MAX_DEER, 0.0008, 0.4, biomes.forest);
+}
 
-    const temp = new THREE.Object3D();
-    let instanceCount = 0;
-    if (!terrainMesh || !terrainMesh.geometry || !terrainMesh.geometry.attributes || !terrainMesh.geometry.attributes.position) { return; }
-    const terrainVertices = terrainMesh.geometry.attributes.position.array;
-    const imgWidth = terrainMesh.geometry.parameters.widthSegments + 1;
-    const imgHeight = terrainMesh.geometry.parameters.heightSegments + 1;
-
-    for (let i = 0; i < imgHeight; i++) {
-        for (let j = 0; j < imgWidth; j++) {
-            if (instanceCount >= MAX_DEER) break;
-            const vertexIndex = (i * imgWidth + j) * 3;
-            if (vertexIndex + 2 >= terrainVertices.length || !biomeMap || !biomeMap[i] || biomeMap[i][j] === undefined) { continue; }
-            const terrainHeight = terrainVertices[vertexIndex + 2];
-            const biomeId = biomeMap[i][j];
-
-            if (terrainHeight > 1 && biomeId === biomes.forest && Math.random() < 0.0008) { 
-                const worldX = terrainVertices[vertexIndex];
-                const worldY = terrainHeight;
-                const worldZ = -terrainVertices[vertexIndex + 1];
-                
-                temp.position.set(worldX, worldY, worldZ);
-                temp.rotation.y = Math.random() * Math.PI * 2;
-                const scale = 0.4
-                temp.scale.set(scale, scale, scale);
-
-                temp.updateMatrix();
-                deerInstances.setMatrixAt(instanceCount, temp.matrix);
-                instanceCount++;
-            }
-        }
-        if (instanceCount >= MAX_DEER) break;
-    }
-    deerInstances.count = instanceCount;
-    deerInstances.instanceMatrix.needsUpdate = true;
+function placeSnakes() {
+    placeAnimal(snakeInstances, MAX_SNAKES, 0.0008, 0.4, biomes.desert);
 }
 
 function placeWolves() {
-    if (!terrainReady || !wolfInstances) {
-        return;
-    }
+  placeAnimal(wolfInstances, MAX_WOLVES, 0.0008, 0.4, biomes.winterForest);
+}
+
+function placeAnimal(instancedMesh, maximum, probability, scale, biome) {
 
     const temp = new THREE.Object3D();
     let instanceCount = 0;
-    if (!terrainMesh || !terrainMesh.geometry || !terrainMesh.geometry.attributes || !terrainMesh.geometry.attributes.position) { return; }
+    if (!terrainMesh || !terrainMesh.geometry || !terrainMesh.geometry.attributes || !terrainMesh.geometry.attributes.position) return;
     const terrainVertices = terrainMesh.geometry.attributes.position.array;
     const imgWidth = terrainMesh.geometry.parameters.widthSegments + 1;
     const imgHeight = terrainMesh.geometry.parameters.heightSegments + 1;
 
     for (let i = 0; i < imgHeight; i++) {
         for (let j = 0; j < imgWidth; j++) {
-            if (instanceCount >= MAX_WOLVES) break;
+            if (instanceCount >= maximum) 
+              break;
             const vertexIndex = (i * imgWidth + j) * 3;
-            if (vertexIndex + 2 >= terrainVertices.length || !biomeMap || !biomeMap[i] || biomeMap[i][j] === undefined) { continue; }
+
+            // In case the biomeMap wasn't filled out properly
+            if (vertexIndex + 2 >= terrainVertices.length || !biomeMap || !biomeMap[i] || biomeMap[i][j] === undefined) continue;
             const terrainHeight = terrainVertices[vertexIndex + 2];
             const biomeId = biomeMap[i][j];
 
-            // Only spawn in winter forest biome
-            if (terrainHeight > 1 && biomeId === biomes.winterForest && Math.random() < 0.0008) { 
+            if (terrainHeight > 1 && biomeId === biome && Math.random() < probability) { 
                 const worldX = terrainVertices[vertexIndex];
                 const worldY = terrainHeight;
                 const worldZ = -terrainVertices[vertexIndex + 1];
                 
                 temp.position.set(worldX, worldY, worldZ);
                 temp.rotation.y = Math.random() * Math.PI * 2;
-                const scale = 0.4;
                 temp.scale.set(scale, scale, scale);
 
                 temp.updateMatrix();
-                wolfInstances.setMatrixAt(instanceCount, temp.matrix);
+                instancedMesh.setMatrixAt(instanceCount, temp.matrix);
                 instanceCount++;
             }
         }
-        if (instanceCount >= MAX_WOLVES) 
-          break;
     }
-    wolfInstances.count = instanceCount;
-    wolfInstances.instanceMatrix.needsUpdate = true;
+    instancedMesh.count = instanceCount;
+    instancedMesh.instanceMatrix.needsUpdate = true;
 }
+
+
 
 function loadTreeModel() {
     // Reset
@@ -406,10 +387,8 @@ function loadDeerModel() {
     if (deerInstances) scene.remove(deerInstances);
     deerInstances = null;
 
-    const textureLoader = new THREE.TextureLoader();
     const deerTexture = textureLoader.load('textures/deer_fur.jpeg');
 
-    console.log("Loading deer model...");
     loader.load("deer.obj", (object) => {
          const deerGeometry = object.children[0].geometry; 
          const deerMaterial = new THREE.MeshStandardMaterial({map: deerTexture });
@@ -429,7 +408,6 @@ function loadWolfModel() {
     if (wolfInstances) scene.remove(wolfInstances);
     wolfInstances = null;
 
-    const textureLoader = new THREE.TextureLoader();
     const wolfTexture = textureLoader.load('textures/wolf_fur.jpg');
 
     loader.load("wolf.obj", (object) => {
@@ -445,6 +423,26 @@ function loadWolfModel() {
 
         checkAndPlaceAssets();
     });
+}
+
+function loadSnakeModel() {
+  if (snakeInstances) scene.remove(snakeInstances);
+  snakeInstances = null;
+
+  const snakeTexture = textureLoader.load("textures/snake.jpg");
+
+  loader.load("snake.obj", (object) => {
+    const snakeGeometry = object.children[0].geometry;
+    const snakeMaterial = new THREE.MeshStandardMaterial({map: snakeTexture});
+
+    snakeInstances = new THREE.InstancedMesh(snakeGeometry, snakeMaterial, MAX_SNAKES);
+    snakeInstances.castShadow = true;
+    snakeInstances.receiveShadow = true;
+    scene.add(snakeInstances);
+    snakeModelReady = true;
+
+    checkAndPlaceAssets();
+  });
 }
 
 function setupMapButtons() {
