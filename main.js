@@ -217,9 +217,10 @@ function createWater() {
 
   const waterMaterial = new THREE.MeshPhongMaterial({
     color: 0x006994,
-    shininess: 60,
     roughness: 0.1,
     transmission: 0.9,
+    tranparent: true,
+    opacity: 0.8,
     envMap: scene.background,
   });
 
