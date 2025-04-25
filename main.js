@@ -72,14 +72,6 @@ function init() {
     obj.position.set(30, 2, 40);
     obj.scale.set(2, 2, 2);
 
-    obj.traverse(function (child) {
-      if (child instanceof THREE.Mesh) {
-        child.material = new THREE.MeshStandardMaterial({
-          color: 0xffee00,
-        });
-      }
-    });
-
     scene.add(obj);
   });
 
