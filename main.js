@@ -221,7 +221,6 @@ function createWater() {
     transmission: 0.9,
     tranparent: true,
     opacity: 0.8,
-    envMap: scene.background,
   });
 
   const waterMesh = new THREE.Mesh(waterGeometry, waterMaterial);
