@@ -271,7 +271,7 @@ function placeTrees() {
             const terrainHeight = terrainVertices[vertexIndex + 2];
             const biomeId = biomeMap[i][j];
 
-            if (terrainHeight > 1 && biomeId === biomes.forest && Math.random() < 0.005) {
+            if (terrainHeight > 4 && biomeId === biomes.forest && Math.random() < 0.005) {
                 const worldX = terrainVertices[vertexIndex];
                 const worldY = terrainHeight;
                 const worldZ = -terrainVertices[vertexIndex + 1];
@@ -328,7 +328,7 @@ function placeAnimal(instancedMesh, maximum, probability, scale, biome) {
             const terrainHeight = terrainVertices[vertexIndex + 2];
             const biomeId = biomeMap[i][j];
 
-            if (terrainHeight > 1 && biomeId === biome && Math.random() < probability) { 
+            if (terrainHeight > 4 && biomeId === biome && Math.random() < probability) { 
                 const worldX = terrainVertices[vertexIndex];
                 const worldY = terrainHeight;
                 const worldZ = -terrainVertices[vertexIndex + 1];
