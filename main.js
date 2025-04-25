@@ -77,7 +77,7 @@ function init() {
     loader.setMaterials(materials);
     loader.setPath("assets/");
     loader.load("buoy.obj", function (buoy) {
-      buoy.position.set(100, 2, 100);
+      buoy.position.set(0, 50, 0);
       buoy.scale.set(1, 1, 1);
 
       scene.add(buoy);
