@@ -170,8 +170,8 @@ function init() {
   });
 
   loader.load("assets/buoy.obj", function (obj) {
-    obj.position.set(0, 50, 0);
-    obj.scale.set(5, 5, 5);
+    obj.position.set(30, 2, 40);
+    obj.scale.set(2, 2, 2);
 
     scene.add(obj);
   });
