@@ -2,7 +2,7 @@ let terrainReady = false;
 
 let scene, camera, renderer, controls, loader, textureLoader;
 let terrainMesh;
-let currentHeightMapUrl = "world.png";
+let currentHeightMapUrl = "default.png";
 let daySky, nightSky;
 let biomeMap;
 
@@ -21,6 +21,8 @@ const MAX_DEER = 100;
 const MAX_WOLVES = 100;
 const MAX_SNAKES = 100;
 
+const MAX_HOUSES = 100;
+
 
 // Tree = regular forest tree
 let leafInstances; 
@@ -35,17 +37,23 @@ let wolfInstances;
 // Snake
 let snakeInstances;
 
+ // Houses
+ let wallInstances;
+ let roofInstances;
+
+ // Make sure the models are loaded before placing the assets
 let leafModelReady = false;
 let trunkModelReady = false;
 let deerModelReady = false;
 let wolfModelReady = false;
 let snakeModelReady = false;
+let houseModelReady = false;
 
 const biomes = {
   desert: 0xffff00,
   winterForest: 0x0000ff,
   forest: 0x00ff00,
-  city: 0xff0000,
+  city: 0xff0000
 };
 
 init();
@@ -62,7 +70,7 @@ function init() {
     0.1,
     2000
   );
-  camera.position.y = TERRAIN_DEPTH_SCALE * 0.5;
+  camera.position.y = TERRAIN_DEPTH_SCALE * 2;
   camera.position.z = 6;
 
   let currentSkybox = "day"; // current skybox mode
@@ -217,6 +225,7 @@ function init() {
   loadDeerModel();
   loadWolfModel();
   loadSnakeModel();
+  loadHouseModel();
 
   checkAndPlaceAssets();
 
@@ -237,6 +246,9 @@ function checkAndPlaceAssets() {
         }
         if (snakeModelReady) {
           placeSnakes();
+        }
+        if (houseModelReady) {
+          placeHouses();
         }
     }
 }
@@ -271,7 +283,7 @@ function placeTrees() {
             const terrainHeight = terrainVertices[vertexIndex + 2];
             const biomeId = biomeMap[i][j];
 
-            if (terrainHeight > 4 && biomeId === biomes.forest && Math.random() < 0.005) {
+            if (terrainHeight > 4 && biomeId === biomes.forest && Math.random() < 0.015) {
                 const worldX = terrainVertices[vertexIndex];
                 const worldY = terrainHeight;
                 const worldZ = -terrainVertices[vertexIndex + 1];
@@ -347,6 +359,39 @@ function placeAnimal(instancedMesh, maximum, probability, scale, biome) {
     instancedMesh.instanceMatrix.needsUpdate = true;
 }
 
+function placeHouses() {
+
+  const temp = new THREE.Object3D();
+  let instanceCount = 0;
+  const vertices = terrainMesh.geometry.attributes.position.array;
+  const widthSegments = terrainMesh.geometry.parameters.widthSegments + 1;
+  const heightSegments = terrainMesh.geometry.parameters.heightSegments + 1;
+
+  for (let y = 0; y < heightSegments && instanceCount < MAX_HOUSES; y++) {
+    for (let x = 0; x < widthSegments && instanceCount < MAX_HOUSES; x++) {
+      const vertexIndex = (y * widthSegments + x) * 3;
+      // Check biomeMap bounds
+      if (!biomeMap || !biomeMap[y] || biomeMap[y][x] === undefined) 
+        continue; 
+      const biomeId = biomeMap[y][x];
+      const height = vertices[vertexIndex + 2];
+      if (height > 2 && biomeId === biomes.city && Math.random() < 0.01) {
+        temp.position.set(vertices[vertexIndex], height, -vertices[vertexIndex + 1]);
+        temp.rotation.y = Math.random() * Math.PI * 2;
+        temp.scale.setScalar(0.5 + Math.random() * 0.5 );  // Varied sizes
+        temp.updateMatrix();
+        wallInstances.setMatrixAt(instanceCount, temp.matrix );
+        roofInstances.setMatrixAt(instanceCount, temp.matrix );
+        instanceCount++;
+      }
+    }
+  }
+
+  wallInstances.count = instanceCount;
+  wallInstances.instanceMatrix.needsUpdate = true;
+  roofInstances.count = instanceCount;
+  roofInstances.instanceMatrix.needsUpdate = true;
+}
 
 
 function loadTreeModel() {
@@ -445,6 +490,40 @@ function loadSnakeModel() {
   });
 }
 
+function loadHouseModel() {
+  houseModelReady = false;
+  if (wallInstances) scene.remove(wallInstances);
+  if (roofInstances) scene.remove(roofInstances);
+  wallInstances = null;
+  roofInstances = null;
+
+  // The walls of the house
+  const wallGeometry = new THREE.BoxGeometry(10, 10, 10);
+  // The roof of the house
+  const roofGeometry = new THREE.ConeGeometry(8, 6, 4);
+  roofGeometry.translate(0, 8, 0);
+  roofGeometry.rotateY(Math.PI / 4);
+
+  const wallTexture = textureLoader.load('textures/bricks.jpg');
+  const roofTexture = textureLoader.load('textures/roof.jpeg');
+
+  const wallMaterial = new THREE.MeshStandardMaterial({map: wallTexture});
+  const roofMaterial = new THREE.MeshStandardMaterial({map: roofTexture});
+
+  wallInstances = new THREE.InstancedMesh(wallGeometry, wallMaterial, MAX_HOUSES);
+  wallInstances.castShadow = true;
+  wallInstances.receiveShadow = true;
+  scene.add(wallInstances);
+
+  roofInstances = new THREE.InstancedMesh(roofGeometry, roofMaterial, MAX_HOUSES);
+  roofInstances.castShadow = true;
+  roofInstances.receiveShadow = true;
+  scene.add(roofInstances);
+
+  houseModelReady = true;
+  checkAndPlaceAssets();
+}
+
 function setupMapButtons() {
     const japanButton = document.getElementById('japanBtn');
     const sriLankaButton = document.getElementById('sriLankaBtn');
@@ -495,6 +574,14 @@ function loadNewTerrain(mapFilename) {
     if (wolfInstances) {
         wolfInstances.count = 0;
         wolfInstances.instanceMatrix.needsUpdate = true;
+    }
+    if (wallInstances) {
+      wallInstances.count = 0;
+      wallInstances.instanceMatrix.needsUpdate = true;
+    }
+    if (roofInstances) {
+       roofInstances.count = 0;
+       roofInstances.instanceMatrix.needsUpdate = true;
     }
 
   currentHeightMapUrl = "textures/" + mapFilename;
@@ -585,7 +672,7 @@ function createTerrain(heightMapTexture, biomeMapTexture) {
           vertexColour.setRGB(0.75, 0.8, 0.9);
           break;
         case biomes.city:
-          vertexColour.setRGB(0.3, 0.2, 0.5);
+          vertexColour.setRGB(0.68, 0.7, 0.48);
           break;
         default:
           vertexColour.setRGB(0, 0.5, 0.9);
@@ -612,8 +699,8 @@ function createTerrain(heightMapTexture, biomeMapTexture) {
   terrainMesh.castShadow = true;
   scene.add(terrainMesh);
 
-  terrainReady = true; // Set the flag indicating terrain is ready
-  checkAndPlaceAssets(); // Attempt to place assets now that terrain is ready
+  terrainReady = true;
+  checkAndPlaceAssets(); 
 }
 
 function createWater() {
@@ -621,6 +708,8 @@ function createWater() {
 
   const waterMaterial = new THREE.MeshPhongMaterial({
     color: 0x006994,
+    transparent: true,
+    opacity: 0.9,
     shininess: 60,
   });
 
