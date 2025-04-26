@@ -2,6 +2,7 @@ let terrainReady = false;
 
 let scene, camera, renderer, controls, loader, textureLoader;
 let terrainMesh;
+
 let currentHeightMapUrl = "default.png";
 let daySky, nightSky;
 let biomeMap;
@@ -21,11 +22,11 @@ const MAX_DEER = 100;
 const MAX_WOLVES = 100;
 const MAX_SNAKES = 100;
 
+// Tree = regular forest tree
 const MAX_HOUSES = 100;
 
-
 // Tree = regular forest tree
-let leafInstances; 
+let leafInstances;
 let trunkInstances;
 
 // Deer
@@ -37,27 +38,31 @@ let wolfInstances;
 // Snake
 let snakeInstances;
 
- // Houses
- let wallInstances;
- let roofInstances;
+// Houses
+let wallInstances;
+let roofInstances;
+
+// Cactus
+let cactiInstances;
 
 // Buoy Bobbing
 let buoy;
 const clock = new THREE.Clock();
 
- // Make sure the models are loaded before placing the assets
+// Make sure the models are loaded before placing the assets
 let leafModelReady = false;
 let trunkModelReady = false;
 let deerModelReady = false;
 let wolfModelReady = false;
 let snakeModelReady = false;
 let houseModelReady = false;
+let cactusModelReady = false;
 
 const biomes = {
   desert: 0xffff00,
   winterForest: 0x0000ff,
   forest: 0x00ff00,
-  city: 0xff0000
+  city: 0xff0000,
 };
 
 init();
@@ -190,8 +195,14 @@ function init() {
     controls.lock();
   });
 
-    controls = new THREE.PointerLockControls(camera, document.body);
-    renderer.domElement.addEventListener('click', function() {controls.lock();});
+  controls = new THREE.PointerLockControls(camera, document.body);
+  renderer.domElement.addEventListener("click", function () {
+    controls.lock();
+  });
+  controls = new THREE.PointerLockControls(camera, document.body);
+  renderer.domElement.addEventListener("click", function () {
+    controls.lock();
+  });
 
   scene.add(controls.getObject());
 
@@ -212,10 +223,13 @@ function init() {
 
   textureLoader = new THREE.TextureLoader();
 
-    loader = new THREE.OBJLoader();
-    // Default model directory is the assets folder
-    loader.setPath("assets/");
+  loader = new THREE.OBJLoader();
+  // Default model directory is the assets folder
+  loader.setPath("assets/");
 
+  loader = new THREE.OBJLoader();
+  // Default model directory is the assets folder
+  loader.setPath("assets/");
 
   // Load the buoy
   loader.load("buoy.obj", function (obj) {
@@ -243,95 +257,112 @@ function init() {
   loadDeerModel();
   loadWolfModel();
   loadSnakeModel();
+  loadCactusModel();
+
+  checkAndPlaceAssets();
+
+  window.addEventListener("resize", onWindowResize, false);
   loadHouseModel();
 
   checkAndPlaceAssets();
 
-    window.addEventListener('resize', onWindowResize, false);
+  window.addEventListener("resize", onWindowResize, false);
 }
 
 // Combined placement check
 function checkAndPlaceAssets() {
-    if(terrainReady) {
-        if (leafModelReady && trunkModelReady) {
-            placeTrees();
-        }
-        if (deerModelReady) {
-            placeDeer();
-        }
-        if (wolfModelReady) {
-            placeWolves();
-        }
-        if (snakeModelReady) {
-          placeSnakes();
-        }
-        if (houseModelReady) {
-          placeHouses();
-        }
+  if (terrainReady) {
+    if (leafModelReady && trunkModelReady) {
+      placeTrees();
     }
+    if (deerModelReady) {
+      placeDeer();
+    }
+    if (wolfModelReady) {
+      placeWolves();
+    }
+    if (snakeModelReady) {
+      placeSnakes();
+    }
+    if (houseModelReady) {
+      placeHouses();
+    }
+  }
 }
 
 function placeTrees() {
-    if (!terrainReady || !leafInstances || !trunkInstances) {
-        return;
+  if (!terrainReady || !leafInstances || !trunkInstances) {
+    return;
+  }
+
+  const temp = new THREE.Object3D();
+  let instanceCount = 0;
+
+  if (
+    !terrainMesh ||
+    !terrainMesh.geometry ||
+    !terrainMesh.geometry.attributes ||
+    !terrainMesh.geometry.attributes.position
+  ) {
+    return;
+  }
+  const terrainVertices = terrainMesh.geometry.attributes.position.array;
+  const imgWidth = terrainMesh.geometry.parameters.widthSegments + 1;
+  const imgHeight = terrainMesh.geometry.parameters.heightSegments + 1;
+
+  for (let i = 0; i < imgHeight; i++) {
+    for (let j = 0; j < imgWidth; j++) {
+      if (instanceCount >= MAX_TREES) break;
+
+      const vertexIndex = (i * imgWidth + j) * 3;
+
+      if (
+        vertexIndex + 2 >= terrainVertices.length ||
+        !biomeMap ||
+        !biomeMap[i] ||
+        biomeMap[i][j] === undefined
+      ) {
+        continue;
+      }
+
+      const terrainHeight = terrainVertices[vertexIndex + 2];
+      const biomeId = biomeMap[i][j];
+
+      if (
+        terrainHeight > 4 &&
+        biomeId === biomes.forest &&
+        Math.random() < 0.015
+      ) {
+        const worldX = terrainVertices[vertexIndex];
+        const worldY = terrainHeight;
+        const worldZ = -terrainVertices[vertexIndex + 1];
+
+        temp.position.set(worldX, worldY, worldZ);
+        const scale = 0.1;
+        temp.scale.set(scale, scale, scale);
+
+        temp.updateMatrix();
+        // Apply matrix to both instances
+        leafInstances.setMatrixAt(instanceCount, temp.matrix);
+        trunkInstances.setMatrixAt(instanceCount, temp.matrix);
+        instanceCount++;
+      }
     }
+  }
 
-    const temp = new THREE.Object3D();
-    let instanceCount = 0;
-
-    if (!terrainMesh ||!terrainMesh.geometry || !terrainMesh.geometry.attributes || !terrainMesh.geometry.attributes.position) {
-        return;
-    }
-    const terrainVertices = terrainMesh.geometry.attributes.position.array;
-    const imgWidth = terrainMesh.geometry.parameters.widthSegments + 1;
-    const imgHeight = terrainMesh.geometry.parameters.heightSegments + 1;
-
-    for (let i = 0; i < imgHeight; i++) { 
-        for (let j = 0; j < imgWidth; j++) {
-
-            if (instanceCount >= MAX_TREES) 
-                break; 
-
-            const vertexIndex = (i * imgWidth + j) * 3;
-
-            if (vertexIndex + 2 >= terrainVertices.length || !biomeMap || !biomeMap[i] || biomeMap[i][j] === undefined) {
-                continue;
-            }
-
-            const terrainHeight = terrainVertices[vertexIndex + 2];
-            const biomeId = biomeMap[i][j];
-
-            if (terrainHeight > 4 && biomeId === biomes.forest && Math.random() < 0.015) {
-                const worldX = terrainVertices[vertexIndex];
-                const worldY = terrainHeight;
-                const worldZ = -terrainVertices[vertexIndex + 1];
-
-                temp.position.set(worldX, worldY, worldZ);
-                const scale = 0.1
-                temp.scale.set(scale, scale, scale);
-
-                temp.updateMatrix();
-                // Apply matrix to both instances
-                leafInstances.setMatrixAt(instanceCount, temp.matrix);
-                trunkInstances.setMatrixAt(instanceCount, temp.matrix);
-                instanceCount++;
-            }
-        }
-    }
-
-    // Update both instances
-    leafInstances.count = instanceCount;
-    leafInstances.instanceMatrix.needsUpdate = true;
-    trunkInstances.count = instanceCount;
-    trunkInstances.instanceMatrix.needsUpdate = true;
+  // Update both instances
+  leafInstances.count = instanceCount;
+  leafInstances.instanceMatrix.needsUpdate = true;
+  trunkInstances.count = instanceCount;
+  trunkInstances.instanceMatrix.needsUpdate = true;
 }
 
 function placeDeer() {
-    placeAnimal(deerInstances, MAX_DEER, 0.0008, 0.4, biomes.forest);
+  placeAnimal(deerInstances, MAX_DEER, 0.0008, 0.4, biomes.forest);
 }
 
 function placeSnakes() {
-    placeAnimal(snakeInstances, MAX_SNAKES, 0.0008, 0.4, biomes.desert);
+  placeAnimal(snakeInstances, MAX_SNAKES, 0.0008, 0.4, biomes.desert);
 }
 
 function placeWolves() {
@@ -339,46 +370,59 @@ function placeWolves() {
 }
 
 function placeAnimal(instancedMesh, maximum, probability, scale, biome) {
+  const temp = new THREE.Object3D();
+  let instanceCount = 0;
+  if (
+    !terrainMesh ||
+    !terrainMesh.geometry ||
+    !terrainMesh.geometry.attributes ||
+    !terrainMesh.geometry.attributes.position
+  )
+    return;
+  const terrainVertices = terrainMesh.geometry.attributes.position.array;
+  const imgWidth = terrainMesh.geometry.parameters.widthSegments + 1;
+  const imgHeight = terrainMesh.geometry.parameters.heightSegments + 1;
 
-    const temp = new THREE.Object3D();
-    let instanceCount = 0;
-    if (!terrainMesh || !terrainMesh.geometry || !terrainMesh.geometry.attributes || !terrainMesh.geometry.attributes.position) return;
-    const terrainVertices = terrainMesh.geometry.attributes.position.array;
-    const imgWidth = terrainMesh.geometry.parameters.widthSegments + 1;
-    const imgHeight = terrainMesh.geometry.parameters.heightSegments + 1;
+  for (let i = 0; i < imgHeight; i++) {
+    for (let j = 0; j < imgWidth; j++) {
+      if (instanceCount >= maximum) break;
+      const vertexIndex = (i * imgWidth + j) * 3;
 
-    for (let i = 0; i < imgHeight; i++) {
-        for (let j = 0; j < imgWidth; j++) {
-            if (instanceCount >= maximum) 
-              break;
-            const vertexIndex = (i * imgWidth + j) * 3;
+      // In case the biomeMap wasn't filled out properly
+      if (
+        vertexIndex + 2 >= terrainVertices.length ||
+        !biomeMap ||
+        !biomeMap[i] ||
+        biomeMap[i][j] === undefined
+      )
+        continue;
+      const terrainHeight = terrainVertices[vertexIndex + 2];
+      const biomeId = biomeMap[i][j];
 
-            // In case the biomeMap wasn't filled out properly
-            if (vertexIndex + 2 >= terrainVertices.length || !biomeMap || !biomeMap[i] || biomeMap[i][j] === undefined) continue;
-            const terrainHeight = terrainVertices[vertexIndex + 2];
-            const biomeId = biomeMap[i][j];
+      if (
+        terrainHeight > 4 &&
+        biomeId === biome &&
+        Math.random() < probability
+      ) {
+        const worldX = terrainVertices[vertexIndex];
+        const worldY = terrainHeight;
+        const worldZ = -terrainVertices[vertexIndex + 1];
 
-            if (terrainHeight > 4 && biomeId === biome && Math.random() < probability) { 
-                const worldX = terrainVertices[vertexIndex];
-                const worldY = terrainHeight;
-                const worldZ = -terrainVertices[vertexIndex + 1];
-                
-                temp.position.set(worldX, worldY, worldZ);
-                temp.rotation.y = Math.random() * Math.PI * 2;
-                temp.scale.set(scale, scale, scale);
+        temp.position.set(worldX, worldY, worldZ);
+        temp.rotation.y = Math.random() * Math.PI * 2;
+        temp.scale.set(scale, scale, scale);
 
-                temp.updateMatrix();
-                instancedMesh.setMatrixAt(instanceCount, temp.matrix);
-                instanceCount++;
-            }
-        }
+        temp.updateMatrix();
+        instancedMesh.setMatrixAt(instanceCount, temp.matrix);
+        instanceCount++;
+      }
     }
-    instancedMesh.count = instanceCount;
-    instancedMesh.instanceMatrix.needsUpdate = true;
+  }
+  instancedMesh.count = instanceCount;
+  instancedMesh.instanceMatrix.needsUpdate = true;
 }
 
 function placeHouses() {
-
   const temp = new THREE.Object3D();
   let instanceCount = 0;
   const vertices = terrainMesh.geometry.attributes.position.array;
@@ -389,17 +433,20 @@ function placeHouses() {
     for (let x = 0; x < widthSegments && instanceCount < MAX_HOUSES; x++) {
       const vertexIndex = (y * widthSegments + x) * 3;
       // Check biomeMap bounds
-      if (!biomeMap || !biomeMap[y] || biomeMap[y][x] === undefined) 
-        continue; 
+      if (!biomeMap || !biomeMap[y] || biomeMap[y][x] === undefined) continue;
       const biomeId = biomeMap[y][x];
       const height = vertices[vertexIndex + 2];
       if (height > 2 && biomeId === biomes.city && Math.random() < 0.01) {
-        temp.position.set(vertices[vertexIndex], height, -vertices[vertexIndex + 1]);
+        temp.position.set(
+          vertices[vertexIndex],
+          height,
+          -vertices[vertexIndex + 1]
+        );
         temp.rotation.y = Math.random() * Math.PI * 2;
-        temp.scale.setScalar(0.5 + Math.random() * 0.5 );  // Varied sizes
+        temp.scale.setScalar(0.5 + Math.random() * 0.5); // Varied sizes
         temp.updateMatrix();
-        wallInstances.setMatrixAt(instanceCount, temp.matrix );
-        roofInstances.setMatrixAt(instanceCount, temp.matrix );
+        wallInstances.setMatrixAt(instanceCount, temp.matrix);
+        roofInstances.setMatrixAt(instanceCount, temp.matrix);
         instanceCount++;
       }
     }
@@ -411,81 +458,97 @@ function placeHouses() {
   roofInstances.instanceMatrix.needsUpdate = true;
 }
 
-
 function loadTreeModel() {
-    // Reset
-    leafModelReady = false;
-    trunkModelReady = false;
-    if (leafInstances) scene.remove(leafInstances);
-    if (trunkInstances) scene.remove(trunkInstances);
-    leafInstances = null;
-    trunkInstances = null;
+  // Reset
+  leafModelReady = false;
+  trunkModelReady = false;
+  if (leafInstances) scene.remove(leafInstances);
+  if (trunkInstances) scene.remove(trunkInstances);
+  leafInstances = null;
+  trunkInstances = null;
 
-    loader.load("Tree low.obj", (object) => {
-
-        const leafGeometry = object.children[0].geometry;
-        const leafMaterial = new THREE.MeshStandardMaterial({ color: "green", side: THREE.DoubleSide });
-
-        const trunkGeometry = object.children[1].geometry;
-        const trunkMaterial = new THREE.MeshStandardMaterial({color: 0x8B4513 });
-
-        leafInstances = new THREE.InstancedMesh(leafGeometry, leafMaterial, MAX_TREES);
-        leafInstances.castShadow = true;
-        leafInstances.receiveShadow = true;
-        scene.add(leafInstances);
-        leafModelReady = true;
-
-        trunkInstances = new THREE.InstancedMesh(trunkGeometry, trunkMaterial, MAX_TREES);
-        trunkInstances.castShadow = true;
-        trunkInstances.receiveShadow = true;
-        scene.add(trunkInstances);
-        trunkModelReady = true;
-
-        checkAndPlaceAssets();
+  loader.load("Tree low.obj", (object) => {
+    const leafGeometry = object.children[0].geometry;
+    const leafMaterial = new THREE.MeshStandardMaterial({
+      color: "green",
+      side: THREE.DoubleSide,
     });
+
+    const trunkGeometry = object.children[1].geometry;
+    const trunkMaterial = new THREE.MeshStandardMaterial({ color: 0x8b4513 });
+
+    leafInstances = new THREE.InstancedMesh(
+      leafGeometry,
+      leafMaterial,
+      MAX_TREES
+    );
+    leafInstances.castShadow = true;
+    leafInstances.receiveShadow = true;
+    scene.add(leafInstances);
+    leafModelReady = true;
+
+    trunkInstances = new THREE.InstancedMesh(
+      trunkGeometry,
+      trunkMaterial,
+      MAX_TREES
+    );
+    trunkInstances.castShadow = true;
+    trunkInstances.receiveShadow = true;
+    scene.add(trunkInstances);
+    trunkModelReady = true;
+
+    checkAndPlaceAssets();
+  });
 }
 
 function loadDeerModel() {
-    deerModelReady = false;
-    if (deerInstances) scene.remove(deerInstances);
-    deerInstances = null;
+  deerModelReady = false;
+  if (deerInstances) scene.remove(deerInstances);
+  deerInstances = null;
 
-    const deerTexture = textureLoader.load('textures/deer_fur.jpeg');
+  const deerTexture = textureLoader.load("textures/deer_fur.jpeg");
 
-    loader.load("deer.obj", (object) => {
-         const deerGeometry = object.children[0].geometry; 
-         const deerMaterial = new THREE.MeshStandardMaterial({map: deerTexture });
+  loader.load("deer.obj", (object) => {
+    const deerGeometry = object.children[0].geometry;
+    const deerMaterial = new THREE.MeshStandardMaterial({ map: deerTexture });
 
-        deerInstances = new THREE.InstancedMesh(deerGeometry, deerMaterial, MAX_DEER);
-        deerInstances.castShadow = true;
-        deerInstances.receiveShadow = true;
-        scene.add(deerInstances);
-        deerModelReady = true;
+    deerInstances = new THREE.InstancedMesh(
+      deerGeometry,
+      deerMaterial,
+      MAX_DEER
+    );
+    deerInstances.castShadow = true;
+    deerInstances.receiveShadow = true;
+    scene.add(deerInstances);
+    deerModelReady = true;
 
-        checkAndPlaceAssets();
-    });
+    checkAndPlaceAssets();
+  });
 }
 
 function loadWolfModel() {
-    wolfModelReady = false;
-    if (wolfInstances) scene.remove(wolfInstances);
-    wolfInstances = null;
+  wolfModelReady = false;
+  if (wolfInstances) scene.remove(wolfInstances);
+  wolfInstances = null;
 
-    const wolfTexture = textureLoader.load('textures/wolf_fur.jpg');
+  const wolfTexture = textureLoader.load("textures/wolf_fur.jpg");
 
-    loader.load("wolf.obj", (object) => {
+  loader.load("wolf.obj", (object) => {
+    const wolfGeometry = object.children[0].geometry;
+    const wolfMaterial = new THREE.MeshStandardMaterial({ map: wolfTexture });
 
-         const wolfGeometry = object.children[0].geometry; 
-         const wolfMaterial = new THREE.MeshStandardMaterial({map: wolfTexture});
+    wolfInstances = new THREE.InstancedMesh(
+      wolfGeometry,
+      wolfMaterial,
+      MAX_WOLVES
+    );
+    wolfInstances.castShadow = true;
+    wolfInstances.receiveShadow = true;
+    scene.add(wolfInstances);
+    wolfModelReady = true;
 
-        wolfInstances = new THREE.InstancedMesh(wolfGeometry, wolfMaterial, MAX_WOLVES);
-        wolfInstances.castShadow = true;
-        wolfInstances.receiveShadow = true;
-        scene.add(wolfInstances);
-        wolfModelReady = true;
-
-        checkAndPlaceAssets();
-    });
+    checkAndPlaceAssets();
+  });
 }
 
 function loadSnakeModel() {
@@ -496,9 +559,13 @@ function loadSnakeModel() {
 
   loader.load("snake.obj", (object) => {
     const snakeGeometry = object.children[0].geometry;
-    const snakeMaterial = new THREE.MeshStandardMaterial({map: snakeTexture});
+    const snakeMaterial = new THREE.MeshStandardMaterial({ map: snakeTexture });
 
-    snakeInstances = new THREE.InstancedMesh(snakeGeometry, snakeMaterial, MAX_SNAKES);
+    snakeInstances = new THREE.InstancedMesh(
+      snakeGeometry,
+      snakeMaterial,
+      MAX_SNAKES
+    );
     snakeInstances.castShadow = true;
     snakeInstances.receiveShadow = true;
     scene.add(snakeInstances);
@@ -522,18 +589,26 @@ function loadHouseModel() {
   roofGeometry.translate(0, 8, 0);
   roofGeometry.rotateY(Math.PI / 4);
 
-  const wallTexture = textureLoader.load('textures/bricks.jpg');
-  const roofTexture = textureLoader.load('textures/roof.jpeg');
+  const wallTexture = textureLoader.load("textures/bricks.jpg");
+  const roofTexture = textureLoader.load("textures/roof.jpeg");
 
-  const wallMaterial = new THREE.MeshStandardMaterial({map: wallTexture});
-  const roofMaterial = new THREE.MeshStandardMaterial({map: roofTexture});
+  const wallMaterial = new THREE.MeshStandardMaterial({ map: wallTexture });
+  const roofMaterial = new THREE.MeshStandardMaterial({ map: roofTexture });
 
-  wallInstances = new THREE.InstancedMesh(wallGeometry, wallMaterial, MAX_HOUSES);
+  wallInstances = new THREE.InstancedMesh(
+    wallGeometry,
+    wallMaterial,
+    MAX_HOUSES
+  );
   wallInstances.castShadow = true;
   wallInstances.receiveShadow = true;
   scene.add(wallInstances);
 
-  roofInstances = new THREE.InstancedMesh(roofGeometry, roofMaterial, MAX_HOUSES);
+  roofInstances = new THREE.InstancedMesh(
+    roofGeometry,
+    roofMaterial,
+    MAX_HOUSES
+  );
   roofInstances.castShadow = true;
   roofInstances.receiveShadow = true;
   scene.add(roofInstances);
@@ -542,12 +617,386 @@ function loadHouseModel() {
   checkAndPlaceAssets();
 }
 
+// Combined placement check
+function checkAndPlaceAssets() {
+  if (terrainReady) {
+    if (leafModelReady && trunkModelReady) {
+      placeTrees();
+    }
+    if (deerModelReady) {
+      placeDeer();
+    }
+    if (wolfModelReady) {
+      placeWolves();
+    }
+    if (snakeModelReady) {
+      placeSnakes();
+    }
+    if (cactusModelReady) {
+      placeCacti();
+    }
+  }
+}
+
+function placeTrees() {
+  if (!terrainReady || !leafInstances || !trunkInstances) {
+    return;
+  }
+
+  const temp = new THREE.Object3D();
+  let instanceCount = 0;
+
+  if (
+    !terrainMesh ||
+    !terrainMesh.geometry ||
+    !terrainMesh.geometry.attributes ||
+    !terrainMesh.geometry.attributes.position
+  ) {
+    return;
+  }
+  const terrainVertices = terrainMesh.geometry.attributes.position.array;
+  const imgWidth = terrainMesh.geometry.parameters.widthSegments + 1;
+  const imgHeight = terrainMesh.geometry.parameters.heightSegments + 1;
+
+  for (let i = 0; i < imgHeight; i++) {
+    for (let j = 0; j < imgWidth; j++) {
+      if (instanceCount >= MAX_TREES) break;
+
+      const vertexIndex = (i * imgWidth + j) * 3;
+
+      if (
+        vertexIndex + 2 >= terrainVertices.length ||
+        !biomeMap ||
+        !biomeMap[i] ||
+        biomeMap[i][j] === undefined
+      ) {
+        continue;
+      }
+
+      const terrainHeight = terrainVertices[vertexIndex + 2];
+      const biomeId = biomeMap[i][j];
+
+      if (
+        terrainHeight > 4 &&
+        biomeId === biomes.forest &&
+        Math.random() < 0.005
+      ) {
+        const worldX = terrainVertices[vertexIndex];
+        const worldY = terrainHeight;
+        const worldZ = -terrainVertices[vertexIndex + 1];
+
+        temp.position.set(worldX, worldY, worldZ);
+        const scale = 0.1;
+        temp.scale.set(scale, scale, scale);
+
+        temp.updateMatrix();
+        // Apply matrix to both instances
+        leafInstances.setMatrixAt(instanceCount, temp.matrix);
+        trunkInstances.setMatrixAt(instanceCount, temp.matrix);
+        instanceCount++;
+      }
+    }
+  }
+
+  // Update both instances
+  leafInstances.count = instanceCount;
+  leafInstances.instanceMatrix.needsUpdate = true;
+  trunkInstances.count = instanceCount;
+  trunkInstances.instanceMatrix.needsUpdate = true;
+}
+
+function placeDeer() {
+  placeAnimal(deerInstances, MAX_DEER, 0.0008, 0.4, biomes.forest);
+}
+
+function placeSnakes() {
+  placeAnimal(snakeInstances, MAX_SNAKES, 0.0008, 0.4, biomes.desert);
+}
+
+function placeWolves() {
+  placeAnimal(wolfInstances, MAX_WOLVES, 0.0008, 0.4, biomes.winterForest);
+}
+
+function placeAnimal(instancedMesh, maximum, probability, scale, biome) {
+  const temp = new THREE.Object3D();
+  let instanceCount = 0;
+  if (
+    !terrainMesh ||
+    !terrainMesh.geometry ||
+    !terrainMesh.geometry.attributes ||
+    !terrainMesh.geometry.attributes.position
+  )
+    return;
+  const terrainVertices = terrainMesh.geometry.attributes.position.array;
+  const imgWidth = terrainMesh.geometry.parameters.widthSegments + 1;
+  const imgHeight = terrainMesh.geometry.parameters.heightSegments + 1;
+
+  for (let i = 0; i < imgHeight; i++) {
+    for (let j = 0; j < imgWidth; j++) {
+      if (instanceCount >= maximum) break;
+      const vertexIndex = (i * imgWidth + j) * 3;
+
+      // In case the biomeMap wasn't filled out properly
+      if (
+        vertexIndex + 2 >= terrainVertices.length ||
+        !biomeMap ||
+        !biomeMap[i] ||
+        biomeMap[i][j] === undefined
+      )
+        continue;
+      const terrainHeight = terrainVertices[vertexIndex + 2];
+      const biomeId = biomeMap[i][j];
+
+      if (
+        terrainHeight > 4 &&
+        biomeId === biome &&
+        Math.random() < probability
+      ) {
+        const worldX = terrainVertices[vertexIndex];
+        const worldY = terrainHeight;
+        const worldZ = -terrainVertices[vertexIndex + 1];
+
+        temp.position.set(worldX, worldY, worldZ);
+        temp.rotation.y = Math.random() * Math.PI * 2;
+        temp.scale.set(scale, scale, scale);
+
+        temp.updateMatrix();
+        instancedMesh.setMatrixAt(instanceCount, temp.matrix);
+        instanceCount++;
+      }
+    }
+  }
+  instancedMesh.count = instanceCount;
+  instancedMesh.instanceMatrix.needsUpdate = true;
+}
+
+function placeCacti() {
+  if (!terrainReady || !cactiInstances || !cactusModelReady) return;
+
+  const temp = new THREE.Object3D();
+  let instanceCount = 0;
+
+  if (
+    !terrainMesh ||
+    !terrainMesh.geometry ||
+    !terrainMesh.geometry.attributes ||
+    !terrainMesh.geometry.attributes.position
+  )
+    return;
+
+  const terrainVertices = terrainMesh.geometry.attributes.position.array;
+  const imageWidth = terrainMesh.geometry.parameters.widthSegments + 1;
+  const imageHeight = terrainMesh.geometry.parameters.heightSegments + 1;
+
+  for (let i = 0; i < imageHeight; i++) {
+    for (let j = 0; j < imageWidth; j++) {
+      if (instanceCount >= MAX_CACTI) break;
+
+      const vertexIndex = (i * imageWidth + j) * 3;
+
+      if (
+        vertexIndex + 2 >= terrainVertices.length ||
+        !biomeMap ||
+        !biomeMap[i] ||
+        biomeMap[i][j] === undefined
+      )
+        continue;
+
+      const terrainHeight = terrainVertices[vertexIndex + 2];
+      const biomeId = biomeMap[i][j];
+
+      // place the cactus only in the desert biome
+
+      if (
+        terrainHeight > 4 &&
+        biomeId === biomes.desert &&
+        Math.random() < 0.005
+      ) {
+        const worldX = terrainVertices[vertexIndex];
+        const worldY = terrainHeight;
+        const worldZ = -terrainVertices[vertexIndex + 1];
+
+        temp.position.set(worldX, worldY, worldZ);
+        temp.rotation.y = Math.random() * Math.PI * 2;
+
+        // change the size of each cactus
+        const scale = 0.15 + Math.random() * 0.07;
+        temp.scale.set(scale, scale, scale);
+
+        temp.updateMatrix();
+        cactiInstances.setMatrixAt(instanceCount, temp.matrix);
+        instanceCount++;
+      }
+    }
+  }
+
+  cactiInstances.count = instanceCount;
+  cactiInstances.instanceMatrix.needsUpdate = true;
+}
+
+function loadTreeModel() {
+  // Reset
+  leafModelReady = false;
+  trunkModelReady = false;
+  if (leafInstances) scene.remove(leafInstances);
+  if (trunkInstances) scene.remove(trunkInstances);
+  leafInstances = null;
+  trunkInstances = null;
+
+  loader.load("Tree low.obj", (object) => {
+    const leafGeometry = object.children[0].geometry;
+    const leafMaterial = new THREE.MeshStandardMaterial({
+      color: "green",
+      side: THREE.DoubleSide,
+    });
+
+    const trunkGeometry = object.children[1].geometry;
+    const trunkMaterial = new THREE.MeshStandardMaterial({ color: 0x8b4513 });
+
+    leafInstances = new THREE.InstancedMesh(
+      leafGeometry,
+      leafMaterial,
+      MAX_TREES
+    );
+    leafInstances.castShadow = true;
+    leafInstances.receiveShadow = true;
+    scene.add(leafInstances);
+    leafModelReady = true;
+
+    trunkInstances = new THREE.InstancedMesh(
+      trunkGeometry,
+      trunkMaterial,
+      MAX_TREES
+    );
+    trunkInstances.castShadow = true;
+    trunkInstances.receiveShadow = true;
+    scene.add(trunkInstances);
+    trunkModelReady = true;
+
+    checkAndPlaceAssets();
+  });
+}
+
+function loadDeerModel() {
+  deerModelReady = false;
+  if (deerInstances) scene.remove(deerInstances);
+  deerInstances = null;
+
+  const deerTexture = textureLoader.load("textures/deer_fur.jpeg");
+
+  loader.load("deer.obj", (object) => {
+    const deerGeometry = object.children[0].geometry;
+    const deerMaterial = new THREE.MeshStandardMaterial({ map: deerTexture });
+
+    deerInstances = new THREE.InstancedMesh(
+      deerGeometry,
+      deerMaterial,
+      MAX_DEER
+    );
+    deerInstances.castShadow = true;
+    deerInstances.receiveShadow = true;
+    scene.add(deerInstances);
+    deerModelReady = true;
+
+    checkAndPlaceAssets();
+  });
+}
+
+function loadWolfModel() {
+  wolfModelReady = false;
+  if (wolfInstances) scene.remove(wolfInstances);
+  wolfInstances = null;
+
+  const wolfTexture = textureLoader.load("textures/wolf_fur.jpg");
+
+  loader.load("wolf.obj", (object) => {
+    const wolfGeometry = object.children[0].geometry;
+    const wolfMaterial = new THREE.MeshStandardMaterial({ map: wolfTexture });
+
+    wolfInstances = new THREE.InstancedMesh(
+      wolfGeometry,
+      wolfMaterial,
+      MAX_WOLVES
+    );
+    wolfInstances.castShadow = true;
+    wolfInstances.receiveShadow = true;
+    scene.add(wolfInstances);
+    wolfModelReady = true;
+
+    checkAndPlaceAssets();
+  });
+}
+
+function loadSnakeModel() {
+  if (snakeInstances) scene.remove(snakeInstances);
+  snakeInstances = null;
+
+  const snakeTexture = textureLoader.load("textures/snake.jpg");
+
+  loader.load("snake.obj", (object) => {
+    const snakeGeometry = object.children[0].geometry;
+    const snakeMaterial = new THREE.MeshStandardMaterial({ map: snakeTexture });
+
+    snakeInstances = new THREE.InstancedMesh(
+      snakeGeometry,
+      snakeMaterial,
+      MAX_SNAKES
+    );
+    snakeInstances.castShadow = true;
+    snakeInstances.receiveShadow = true;
+    scene.add(snakeInstances);
+    snakeModelReady = true;
+
+    checkAndPlaceAssets();
+  });
+}
+
+function loadCactusModel() {
+  if (cactiInstances) scene.remove(cactiInstances);
+  cactiInstances = null;
+  cactusModelReady = false;
+
+  // load textures onto the cactus
+  const cactusDiffuse = textureLoader.load("textures/material_0_diffuse.png");
+  const cactusNormal = textureLoader.load("textures/material_0_normal.png");
+  const cactusSpecular = textureLoader.load("textures/specularGlossiness.png");
+
+  // create the material with textures
+  const cactusMaterial = new THREE.MeshStandardMaterial({
+    map: cactusDiffuse,
+    normalMap: cactusSpecular,
+    color: 0x2e8b57,
+    roughness: 0.7,
+    metalness: 0.1,
+  });
+
+  // load the obj
+  loader.load("cactus.obj", (obj) => {
+    const cactiGeometry = obj.children[0].geometry;
+
+    // create an instanced mesh
+    cactiInstances = new THREE.InstancedMesh(
+      cactiGeometry,
+      cactiMaterial,
+      MAX_CACTI
+    );
+
+    cactiInstances.castShadow = true;
+    cactiInstances.receiveShadow = true;
+
+    scene.add(cactiInstances);
+    cactusModelReady = true;
+
+    checkAndPlaceAssets();
+  });
+}
+
 function setupMapButtons() {
-    const japanButton = document.getElementById('japanBtn');
-    const sriLankaButton = document.getElementById('sriLankaBtn');
-    const defaultButton = document.getElementById('defaultBtn');
-    const hawaiiButton = document.getElementById('hawaiiBtn');
-    const worldButton = document.getElementById('worldBtn');
+  const japanButton = document.getElementById("japanBtn");
+  const sriLankaButton = document.getElementById("sriLankaBtn");
+  const defaultButton = document.getElementById("defaultBtn");
+  const hawaiiButton = document.getElementById("hawaiiBtn");
+  const worldButton = document.getElementById("worldBtn");
 
   japanButton.addEventListener("click", () => {
     loadNewTerrain("japan.png");
@@ -567,40 +1016,40 @@ function setupMapButtons() {
 }
 
 function loadNewTerrain(mapFilename) {
-    terrainReady = false; 
-    if (terrainMesh) {
-        scene.remove(terrainMesh);
-        if(terrainMesh.geometry) terrainMesh.geometry.dispose();
-        if(terrainMesh.material) {
-            terrainMesh.material.dispose();
-        }
-        terrainMesh = null;
+  terrainReady = false;
+  if (terrainMesh) {
+    scene.remove(terrainMesh);
+    if (terrainMesh.geometry) terrainMesh.geometry.dispose();
+    if (terrainMesh.material) {
+      terrainMesh.material.dispose();
     }
-     // Reset all instances
-    if (leafInstances) {
-        leafInstances.count = 0;
-        leafInstances.instanceMatrix.needsUpdate = true;
-    }
-    if (trunkInstances) {
-        trunkInstances.count = 0;
-        trunkInstances.instanceMatrix.needsUpdate = true;
-    }
-    if (deerInstances) {
-        deerInstances.count = 0;
-        deerInstances.instanceMatrix.needsUpdate = true;
-    }
-    if (wolfInstances) {
-        wolfInstances.count = 0;
-        wolfInstances.instanceMatrix.needsUpdate = true;
-    }
-    if (wallInstances) {
-      wallInstances.count = 0;
-      wallInstances.instanceMatrix.needsUpdate = true;
-    }
-    if (roofInstances) {
-       roofInstances.count = 0;
-       roofInstances.instanceMatrix.needsUpdate = true;
-    }
+    terrainMesh = null;
+  }
+  // Reset all instances
+  if (leafInstances) {
+    leafInstances.count = 0;
+    leafInstances.instanceMatrix.needsUpdate = true;
+  }
+  if (trunkInstances) {
+    trunkInstances.count = 0;
+    trunkInstances.instanceMatrix.needsUpdate = true;
+  }
+  if (deerInstances) {
+    deerInstances.count = 0;
+    deerInstances.instanceMatrix.needsUpdate = true;
+  }
+  if (wolfInstances) {
+    wolfInstances.count = 0;
+    wolfInstances.instanceMatrix.needsUpdate = true;
+  }
+  if (wallInstances) {
+    wallInstances.count = 0;
+    wallInstances.instanceMatrix.needsUpdate = true;
+  }
+  if (roofInstances) {
+    roofInstances.count = 0;
+    roofInstances.instanceMatrix.needsUpdate = true;
+  }
 
   currentHeightMapUrl = "textures/" + mapFilename;
 
@@ -634,7 +1083,7 @@ function createTerrain(heightMapTexture, biomeMapTexture) {
   const canvas = document.createElement("canvas");
   canvas.width = imgWidth;
   canvas.height = imgHeight;
-  const context = canvas.getContext("2d", {willReadFrequently: true});
+  const context = canvas.getContext("2d", { willReadFrequently: true });
   context.drawImage(img, 0, 0);
   const imgData = context.getImageData(0, 0, imgWidth, imgHeight).data;
 
@@ -657,7 +1106,7 @@ function createTerrain(heightMapTexture, biomeMapTexture) {
   );
 
   biomeMap = new Array(imgHeight);
-  for(i = 0; i < biomeMap.length; i++) {
+  for (i = 0; i < biomeMap.length; i++) {
     biomeMap[i] = new Array(imgWidth);
   }
 
@@ -677,8 +1126,11 @@ function createTerrain(heightMapTexture, biomeMapTexture) {
       if (vertices[vertexIndex + 2] < 1) {
         vertices[vertexIndex + 2] = -40;
       }
-      const biomeId = (biomeData[pixelIndex] << 16) + (biomeData[pixelIndex + 1] << 8) + biomeData[pixelIndex + 2];
-      biomeMap[y][x] = biomeId; 
+      const biomeId =
+        (biomeData[pixelIndex] << 16) +
+        (biomeData[pixelIndex + 1] << 8) +
+        biomeData[pixelIndex + 2];
+      biomeMap[y][x] = biomeId;
       switch (biomeId) {
         case biomes.desert:
           vertexColour.setRGB(0.7, 0.6, 0.1);
@@ -717,8 +1169,8 @@ function createTerrain(heightMapTexture, biomeMapTexture) {
   terrainMesh.castShadow = true;
   scene.add(terrainMesh);
 
-  terrainReady = true;
-  checkAndPlaceAssets(); 
+  terrainReady = true; // Set the flag indicating terrain is ready
+  checkAndPlaceAssets(); // Attempt to place assets now that terrain is ready
 }
 
 function createWater() {
@@ -752,7 +1204,7 @@ function animate() {
   if (buoy) {
     const time = clock.getElapsedTime();
 
-    buoy.position.y = 1.5 + Math.sin(time * 2)*1.5;
+    buoy.position.y = 1.5 + Math.sin(time * 2) * 1.5;
   }
 
   renderer.render(scene, camera);
