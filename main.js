@@ -41,6 +41,10 @@ let snakeInstances;
  let wallInstances;
  let roofInstances;
 
+// Buoy Bobbing
+let buoy;
+const clock = new THREE.Clock();
+
  // Make sure the models are loaded before placing the assets
 let leafModelReady = false;
 let trunkModelReady = false;
@@ -226,6 +230,12 @@ function init() {
       }
     });
 
+    // Add a point light to the buoy
+    const buoyLight = new THREE.PointLight(0xffffff, 0.5, 150);
+    buoyLight.position.set(0, 5, 0);
+    obj.add(buoyLight);
+
+    buoy = obj;
     scene.add(obj);
   });
 
@@ -737,6 +747,13 @@ function onWindowResize() {
 
 function animate() {
   requestAnimationFrame(animate);
+
+  // Buoy floating
+  if (buoy) {
+    const time = clock.getElapsedTime();
+
+    buoy.position.y = 1.5 + Math.sin(time * 2)*1.5;
+  }
 
   renderer.render(scene, camera);
 }
