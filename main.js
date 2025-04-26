@@ -53,7 +53,7 @@ const clock = new THREE.Clock();
 let waterMesh;
 let waterBaseY = 1;
 
- // Make sure the models are loaded before placing the assets
+// Make sure the models are loaded before placing the assets
 let leafModelReady = false;
 let trunkModelReady = false;
 let deerModelReady = false;
@@ -287,6 +287,9 @@ function checkAndPlaceAssets() {
     }
     if (snakeModelReady) {
       placeSnakes();
+    }
+    if (cactusModelReady) {
+      placeCacti();
     }
     if (houseModelReady) {
       placeHouses();
@@ -810,11 +813,10 @@ function placeCacti() {
       const biomeId = biomeMap[i][j];
 
       // place the cactus only in the desert biome
-
       if (
         terrainHeight > 4 &&
         biomeId === biomes.desert &&
-        Math.random() < 0.005
+        Math.random() < 0.01
       ) {
         const worldX = terrainVertices[vertexIndex];
         const worldY = terrainHeight;
@@ -956,8 +958,10 @@ function loadSnakeModel() {
 }
 
 function loadCactusModel() {
-  if (cactiInstances) scene.remove(cactiInstances);
-  cactiInstances = null;
+  if (cactiInstances) {
+    scene.remove(cactiInstances);
+    cactiInstances = null;
+  }
   cactusModelReady = false;
 
   // load textures onto the cactus
@@ -968,7 +972,7 @@ function loadCactusModel() {
   // create the material with textures
   const cactusMaterial = new THREE.MeshStandardMaterial({
     map: cactusDiffuse,
-    normalMap: cactusSpecular,
+    normalMap: cactusNormal,
     color: 0x2e8b57,
     roughness: 0.7,
     metalness: 0.1,
@@ -989,8 +993,8 @@ function loadCactusModel() {
     cactiInstances.receiveShadow = true;
 
     scene.add(cactiInstances);
-    cactusModelReady = true;
 
+    cactusModelReady = true;
     checkAndPlaceAssets();
   });
 }
@@ -1018,8 +1022,6 @@ function setupMapButtons() {
     loadNewTerrain("world.png");
   });
 }
-
-
 
 function loadNewTerrain(mapFilename) {
   terrainReady = false;
@@ -1055,6 +1057,10 @@ function loadNewTerrain(mapFilename) {
   if (roofInstances) {
     roofInstances.count = 0;
     roofInstances.instanceMatrix.needsUpdate = true;
+  }
+  if (cactiInstances) {
+    cactiInstances.count = 0;
+    cactiInstances.instanceMatrix.needsUpdate = true;
   }
 
   currentHeightMapUrl = "textures/" + mapFilename;
@@ -1212,8 +1218,7 @@ function animate() {
   const time = clock.getElapsedTime();
   // Buoy floating
   if (buoy) {
-
-    buoy.position.y = 1.5+ Math.sin(time * 2)*1.5;
+    buoy.position.y = 1.5 + Math.sin(time * 2) * 1.5;
   }
 
   // Water moving motion
