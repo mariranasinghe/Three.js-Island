@@ -218,6 +218,14 @@ function init() {
     obj.position.set(-50, 2, 0);
     obj.scale.set(1, 1, 1);
 
+    obj.traverse(function (child) {
+      if (child.isMesh) {
+        child.material = new THREE.MeshPhongMaterial({
+          color: 0xb03131,
+        });
+      }
+    });
+
     scene.add(obj);
   });
 
