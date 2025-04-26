@@ -45,6 +45,10 @@ let snakeInstances;
 let buoy;
 const clock = new THREE.Clock();
 
+// Water moving
+let waterMesh;
+let waterBaseY = 1;
+
  // Make sure the models are loaded before placing the assets
 let leafModelReady = false;
 let trunkModelReady = false;
@@ -731,9 +735,12 @@ function createWater() {
     shininess: 60,
   });
 
-  const waterMesh = new THREE.Mesh(waterGeometry, waterMaterial);
+  // Assign to global waterMesh so we can animate it
+  waterMesh = new THREE.Mesh(waterGeometry, waterMaterial);
   waterMesh.rotation.x = -Math.PI / 2;
   waterMesh.position.y = 1;
+  // Store the starting height for bobbing
+  waterBaseY = waterMesh.position.y;
   waterMesh.receiveShadow = true;
 
   scene.add(waterMesh);
@@ -748,11 +755,16 @@ function onWindowResize() {
 function animate() {
   requestAnimationFrame(animate);
 
+  const time = clock.getElapsedTime();
   // Buoy floating
   if (buoy) {
-    const time = clock.getElapsedTime();
 
-    buoy.position.y = 1.5 + Math.sin(time * 2)*1.5;
+    buoy.position.y = 1.5+ Math.sin(time * 2)*1.5;
+  }
+
+  // Water moving motion
+  if (waterMesh) {
+    waterMesh.position.y = waterBaseY + Math.sin(time * 1) * 2;
   }
 
   renderer.render(scene, camera);
