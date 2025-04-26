@@ -3,8 +3,10 @@ let terrainReady = false;
 let scene, camera, renderer, controls, loader, textureLoader;
 let terrainMesh;
 let currentHeightMapUrl = "world.png";
-let daySky, nightSky;
+let daySky, nightSky; // The two skyboxes
 let biomeMap;
+let cactiInstances,
+  cactusModelReady = false;
 
 const TERRAIN_WIDTH = 1000;
 const TERRAIN_HEIGHT = 1000;
@@ -225,6 +227,7 @@ function init() {
   loadDeerModel();
   loadWolfModel();
   loadSnakeModel();
+  loadCactusModel();
 
   checkAndPlaceAssets();
 
@@ -245,6 +248,9 @@ function checkAndPlaceAssets() {
     }
     if (snakeModelReady) {
       placeSnakes();
+    }
+    if (cactusModelReady) {
+      placeCacti();
     }
   }
 }
@@ -381,6 +387,70 @@ function placeAnimal(instancedMesh, maximum, probability, scale, biome) {
   instancedMesh.instanceMatrix.needsUpdate = true;
 }
 
+function placeCacti() {
+  if (!terrainReady || !cactiInstances || !cactusModelReady) return;
+
+  const temp = new THREE.Object3D();
+  let instanceCount = 0;
+
+  if (
+    !terrainMesh ||
+    !terrainMesh.geometry ||
+    !terrainMesh.geometry.attributes ||
+    !terrainMesh.geometry.attributes.position
+  )
+    return;
+
+  const terrainVertices = terrainMesh.geometry.attributes.position.array;
+  const imageWidth = terrainMesh.geometry.parameters.widthSegments + 1;
+  const imageHeight = terrainMesh.geometry.parameters.heightSegments + 1;
+
+  for (let i = 0; i < imageHeight; i++) {
+    for (let j = 0; j < imageWidth; j++) {
+      if (instanceCount >= MAX_CACTI) break;
+
+      const vertexIndex = (i * imageWidth + j) * 3;
+
+      if (
+        vertexIndex + 2 >= terrainVertices.length ||
+        !biomeMap ||
+        !biomeMap[i] ||
+        biomeMap[i][j] === undefined
+      )
+        continue;
+
+      const terrainHeight = terrainVertices[vertexIndex + 2];
+      const biomeId = biomeMap[i][j];
+
+      // place the cactus only in the desert biome
+
+      if (
+        terrainHeight > 4 &&
+        biomeId === biomes.desert &&
+        Math.random() < 0.005
+      ) {
+        const worldX = terrainVertices[vertexIndex];
+        const worldY = terrainHeight;
+        const worldZ = -terrainVertices[vertexIndex + 1];
+
+        temp.position.set(worldX, worldY, worldZ);
+        temp.rotation.y = Math.random() * Math.PI * 2;
+
+        // change the size of each cactus
+        const scale = 0.15 + Math.random() * 0.07;
+        temp.scale.set(scale, scale, scale);
+
+        temp.updateMatrix();
+        cactiInstances.setMatrixAt(instanceCount, temp.matrix);
+        instanceCount++;
+      }
+    }
+  }
+
+  cactiInstances.count = instanceCount;
+  cactiInstances.instanceMatrix.needsUpdate = true;
+}
+
 function loadTreeModel() {
   // Reset
   leafModelReady = false;
@@ -498,6 +568,46 @@ function loadSnakeModel() {
   });
 }
 
+function loadCactusModel() {
+  if (cactiInstances) scene.remove(cactiInstances);
+  cactiInstances = null;
+  cactusModelReady = false;
+
+  // load textures onto the cactus
+  const cactusDiffuse = textureLoader.load("textures/material_0_diffuse.png");
+  const cactusNormal = textureLoader.load("textures/material_0_normal.png");
+  const cactusSpecular = textureLoader.load("textures/specularGlossiness.png");
+
+  // create the material with textures
+  const cactusMaterial = new THREE.MeshStandardMaterial({
+    map: cactusDiffuse,
+    normalMap: cactusSpecular,
+    color: 0x2e8b57,
+    roughness: 0.7,
+    metalness: 0.1,
+  });
+
+  // load the obj
+  loader.load("cactus.obj", (obj) => {
+    const cactiGeometry = obj.children[0].geometry;
+
+    // create an instanced mesh
+    cactiInstances = new THREE.InstancedMesh(
+      cactiGeometry,
+      cactiMaterial,
+      MAX_CACTI
+    );
+
+    cactiInstances.castShadow = true;
+    cactiInstances.receiveShadow = true;
+
+    scene.add(cactiInstances);
+    cactusModelReady = true;
+
+    checkAndPlaceAssets();
+  });
+}
+
 function setupMapButtons() {
   const japanButton = document.getElementById("japanBtn");
   const sriLankaButton = document.getElementById("sriLankaBtn");
@@ -548,6 +658,10 @@ function loadNewTerrain(mapFilename) {
   if (wolfInstances) {
     wolfInstances.count = 0;
     wolfInstances.instanceMatrix.needsUpdate = true;
+  }
+  if (cactiInstances) {
+    cactiInstances.count = 0;
+    cactiInstances.instanceMatrix.needsUpdate = true;
   }
 
   currentHeightMapUrl = "textures/" + mapFilename;
