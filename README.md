@@ -1,2 +1,2 @@
 ﻿# Procedural island generator
-View here: https://entropite.github.io/Three.js-Island/
+View here: https://mariranasinghe.github.io/Three.js-Island/
